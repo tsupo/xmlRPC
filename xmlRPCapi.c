@@ -9,6 +9,17 @@
  * History:
  * $Log: /comm/xmlRPC/xmlRPCapi.c $
  * 
+ * 2     09/05/22 21:07 tsupo
+ * 「1.264版→1.265版」の変更を取り込む
+ * 
+ * 53    09/05/22 17:42 Tsujimura543
+ * ソースを整理
+ * 
+ * 52    09/05/22 17:40 Tsujimura543
+ * uploadFile() を修正(ココログの .. へのファイルアップロード時、ココログ
+ * へのログイン処理実行の副作用でアップロード対象のファイルの中身を格納し
+ * ているメモリ領域の内容が破壊されてしまう不具合があった)
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -188,7 +199,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/xmlRPCapi.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/xmlRPCapi.c 2     09/05/22 21:07 tsupo $";
 #endif
 
 
@@ -3336,6 +3347,7 @@ uploadFile( const char *blogID,
     const char      *p;
     char            *q = NULL;
     unsigned char   *buf;
+    char            *bits = NULL;
     FILE            *fp;
     int             ret = 0;
 
@@ -3399,7 +3411,11 @@ uploadFile( const char *blogID,
         free( buf );
         return ( -4 );
     }
-    fInfo.bits = (unsigned char *)q;
+    bits = (char *)malloc( strlen( q ) + 1 );
+    if ( !bits )
+        return ( -4 );
+    strcpy( bits, q );
+    fInfo.bits = (unsigned char *)bits;
 
     if ( !strcmp( dirname, ".." )                           &&
          ((xmlrpc_p->blogKind == BLOGKIND_COCOLOG)     ||
@@ -3423,6 +3439,8 @@ uploadFile( const char *blogID,
     else
         ret = newMediaObject( blogID, userName, password, &fInfo, url );
 
+    if ( bits )
+        free( bits );
     if ( q )
         (void)base64( NULL, 0 );
                         /* base64() 内で確保したメモリを free する */

@@ -5,6 +5,13 @@
  * History:
  * $Log: /comm/xmlRPC/cocolog.c $
  * 
+ * 2     09/05/22 21:07 tsupo
+ * 「1.264版→1.265版」の変更を取り込む
+ * 
+ * 17    09/05/22 17:45 Tsujimura543
+ * uploadCocologFiles() を修正。アップロード成功時のファイル名取得処理
+ * を最近のココログのファイルマネージャの仕様に合うように更新
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -72,7 +79,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/cocolog.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/cocolog.c 2     09/05/22 21:07 tsupo $";
 #endif
 
 #define COCOLOGFREE_FILEMANAGER \
@@ -411,7 +418,7 @@ uploadCocologFiles( FILEINF *fileInf, // (I)   アップロードするファイルに関す
             char    targetString[BUFSIZ];
 
             p += 22;
-            sprintf( targetString, "%s\">%s</a>", r, r );
+            sprintf( targetString, ">%s</a>", r );
             q = strstr( p, targetString );
             if ( !q ) {
                 /* ファイルをアップロードするとファイル名中の大文字が小文字 */
@@ -425,10 +432,10 @@ uploadCocologFiles( FILEINF *fileInf, // (I)   アップロードするファイルに関す
                 q = strstr( p, targetString );
             }
             if ( q ) {
-                while ( *q && (*q != '"') )
+                while ( (q >= response) && *q && (strncmp( q, "href=\"", 6 ) != 0) )
                     q--;
-                if ( *q == '"' ) {
-                    q++;
+                if ( !strncmp( q, "href=\"", 6 ) ) {
+                    q += 6;
                     p = strchr( q, '"' );
                     if ( p ) {
                         strncpy( url, q, p - q );
