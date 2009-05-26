@@ -50,6 +50,16 @@
  * History:
  * $Log: /comm/xmlRPC/xmlRPC.h $
  * 
+ * 3     09/05/27 1:18 tsupo
+ * 1.266版
+ * 
+ * 243   09/05/26 20:55 Tsujimura543
+ * APIURL_TUMBLR_ACOUNT を追加
+ * 
+ * 242   09/05/26 16:56 Tsujimura543
+ * (1) tumblr 関連の #define を追加
+ * (2) ココログ、ココログフリーのエンドポイントを http から https に変更
+ * 
  * 2     09/05/16 2:39 tsupo
  * 「1.263版→1.264版」の変更を取り込む
  * 
@@ -954,6 +964,7 @@
 #define BLOGKIND_YAHOO360       0xF2    /* Yahoo! Days                  */
 #define BLOGKIND_OPENPNE        0xF3    /* OpenPNE                      */
 #define BLOGKIND_SIMANITY       0xF4    /* しまにてぃ                   */
+#define BLOGKIND_TUMBLR         0xF5    /* tumblr (の text)             */
 
 /* XML-RPC API エンドポイント URL */
 #define APIURL_MOVABLETYPE      "$/mt/mt-xmlrpc.cgi"
@@ -961,8 +972,8 @@
 #define APIURL_TYPEPADJAPAN     "http://www.typepad.jp/t/api"
 #define APIURL_TYPEPADFRANCE    APIURL_TYPEPAD
 #define APIURL_TYPEPADGERMANY   APIURL_TYPEPAD
-#define APIURL_COCOLOG          "http://app.cocolog-nifty.com/t/api/"
-#define APIURL_COCOLOGFREE      "http://app.f.cocolog-nifty.com/t/api/"
+#define APIURL_COCOLOG          "https://app.cocolog-nifty.com/t/api/"
+#define APIURL_COCOLOGFREE      "https://app.f.cocolog-nifty.com/t/api/"
 #define APIURL_BLOGZINE         "http://app.blog.ocn.ne.jp/t/api/"
 #define APIURL_NEWSHANDLER      "http://blog.nettribe.org/xmlrpc.php"
 #define APIURL_SEESAABLOG       "http://blog.seesaa.jp/rpc/"
@@ -997,8 +1008,8 @@
 #define ATOMURL_TYPEPADJAPAN    "http://www.typepad.jp/t/atom/weblog"
 #define ATOMURL_TYPEPADFRANCE   ATOMURL_TYPEPAD
 #define ATOMURL_TYPEPADGERMANY  ATOMURL_TYPEPAD
-#define ATOMURL_COCOLOG         "http://app.cocolog-nifty.com/t/atom/weblog"
-#define ATOMURL_COCOLOGFREE     "http://app.f.cocolog-nifty.com/t/atom/weblog"
+#define ATOMURL_COCOLOG         "https://app.cocolog-nifty.com/t/atom/weblog"
+#define ATOMURL_COCOLOGFREE     "https://app.f.cocolog-nifty.com/t/atom/weblog"
 #define ATOMURL_BLOGZINE        "http://app.blog.ocn.ne.jp/t/atom/weblog"
 #define ATOMURL_LIVEDOOR        "http://blog.livedoor.com/atom"
 #define ATOMURL_LIVEDOOR_200507 "http://cms.blog.livedoor.com/atom" /* 2005年7月以降 */
@@ -1013,6 +1024,11 @@
 
 #define APIURL_BLOGGER_GDATA    "https://www.blogger.com/feeds"     /* GData API          */
 #define APIURL_VOX_DEVELOPERS   "http://www.vox.com/services/api"   /* Vox developers API */
+
+/* その他 エントリポイント */
+#define APIURL_TUMBLR_WRITE     "http://www.tumblr.com/api/write"   /* tumblr 投稿用 */
+#define APIURL_TUMBLR_ACOUNT    "http://www.tumblr.com/api/authenticate"
+                                                      /* tumblr アカウント情報取得用 */
 
 /* blog 毎のこまごまとした定義 */
 #define JUGEMTYPE_OLD   1   /* β版時代からの無料サービス xxx.jugem.cc */
