@@ -297,6 +297,8 @@ EXPORTS
 ;   makeRurl                @149
     replaceEntityStrings    @137
     getStatusCode           @148
+    setSigInfo              @89
+    setSigInfo3             @91
 
 ;   for JUGEM
 ;   loginJugem				@201

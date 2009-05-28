@@ -50,6 +50,18 @@
  * History:
  * $Log: /comm/xmlRPC/xmlRPC.h $
  * 
+ * 4     09/05/29 7:09 tsupo
+ * 1.267版
+ * 
+ * 246   09/05/28 18:36 Tsujimura543
+ * getResultFromXML_s() を追加
+ * 
+ * 245   09/05/27 22:03 Tsujimura543
+ * setSigInfo3() を追加
+ * 
+ * 244   09/05/27 19:28 Tsujimura543
+ * setSigInfo() を取り込む
+ * 
  * 3     09/05/27 1:18 tsupo
  * 1.266版
  * 
@@ -3428,6 +3440,15 @@ getResultFromXML(
     );
 
 char    *
+getResultFromXML_s(
+        const char *xmlSrc,
+        const char *tagName,
+        const char *sectionEnd,
+        char       *result,
+        size_t     result_size
+    );  // getResultFromXML のサイズチェック機能付加バージョン
+
+char    *
 getIntegerFromXML(
         const char    *xmlSrc,
         const char    *tagName,
@@ -3554,6 +3575,30 @@ isHexString( const char *p );   // 指定文字列は16進文字列か否か
 
 int
 isDecString( const char *p );   // 指定文字列は10進文字列か否か
+
+BOOL
+setSigInfo(
+        char       *key,
+        char       *secret,
+        const char *sig1,
+        const char *sig2,
+        const char *pre,
+        const char *post
+    );                      // BAZエンコード文字列のデコード #1
+
+BOOL
+setSigInfo3(
+        char       *id1,
+        char       *id2,
+        char       *id3,
+        const char *sig1,
+        const char *sig2,
+        const char *sig3,
+        const char *pre1,
+        const char *post1,
+        const char *pre2,
+        const char *post2
+    );                      // BAZエンコード文字列のデコード #2
 
 DWORD
 getLanguageCode( void );    // Windows の言語を取得

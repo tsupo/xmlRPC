@@ -4,6 +4,12 @@
  * History:
  * $Log: /comm/xmlRPC/amazon.c $
  * 
+ * 2     09/05/29 7:09 tsupo
+ * 1.267版
+ * 
+ * 41    09/05/28 18:37 Tsujimura543
+ * バッファオーバーラン対策を強化
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -139,10 +145,11 @@
 
 #include "xmlRPC.h"
 #include "amazon.h"
+#include <assert.h>
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/amazon.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/amazon.c 2     09/05/29 7:09 tsupo $";
 #endif
 
 
@@ -483,7 +490,7 @@ setSubscriptionIDOnAmazon( const char *subscriptionID )
 
 
 /* Amazon で検索 */
-#define BUFFER_SIZE     1024
+#define BUFFER_SIZE     4096
 #define ITEMS_PER_PAGE  10
 
 #if 0
@@ -1011,6 +1018,15 @@ getItemsFromResultSmall(
 
     *next = FALSE;
     p = xmlSrc;
+#ifdef  _DEBUG
+    {
+        FILE    *fp = fopen( "./amazonResult.xml", "w" );
+        if ( fp ) {
+            fputs( p, fp );
+            fclose( fp );
+        }
+    }
+#endif
     if ( p && *p ) {
         q = strstr( p, "<ItemPage>" );
         if ( q ) {
@@ -1038,10 +1054,10 @@ getItemsFromResultSmall(
 
         memset( result, 0x00, sizeof ( AMAZON_LITE ) );
         p += 6;
-        p = getResultFromXML( p, "ASIN",          sectionEnd,
-                              result->asin );
-        p = getResultFromXML( p, "DetailPageURL", sectionEnd,
-                              result->url );
+        p = getResultFromXML_s( p, "ASIN",          sectionEnd,
+                               result->asin, MAX_NAMELEN - 1 );
+        p = getResultFromXML_s( p, "DetailPageURL", sectionEnd,
+                                result->url, MAX_URLLENGTH_MAX - 1 );
 
         result->imageURLsmall[0]  = NUL;
         result->imageURLmedium[0] = NUL;
@@ -1050,20 +1066,20 @@ getItemsFromResultSmall(
         // SmallImage
         q = strstr( p, "<SmallImage>" );
         if ( q && (q < r) )
-            p = getResultFromXML( q, "URL", sectionEnd,
-                                  result->imageURLsmall );
+            p = getResultFromXML_s(q, "URL", sectionEnd,
+                                   result->imageURLsmall, MAX_URLLENGTH - 1);
 
         // MediumImage
         q = strstr( p, "<MediumImage>" );
         if ( q && (q < r) )
-            p = getResultFromXML( q, "URL", sectionEnd,
-                                  result->imageURLmedium );
+            p = getResultFromXML_s(q, "URL", sectionEnd,
+                                   result->imageURLmedium, MAX_URLLENGTH - 1);
 
         // LargeImage
         q = strstr( p, "<LargeImage>" );
         if ( q && (q < r) )
-            p = getResultFromXML( q, "URL", sectionEnd,
-                                  result->imageURLlarge );
+            p = getResultFromXML_s(q, "URL", sectionEnd,
+                                   result->imageURLlarge, MAX_URLLENGTH - 1);
 
         // ItemAttributes
         result->authors[0]      = NUL;
@@ -1074,46 +1090,52 @@ getItemsFromResultSmall(
 
         q = strstr( p, "<Author>" );
         if ( q && (q < r) )
-            p = getResultFromXML( p, "Author", sectionEnd,
-                                  result->authors );
+            p = getResultFromXML_s( p, "Author", sectionEnd,
+                                    result->authors,
+                                    MAX_AUTHORINFO_LENGTH - 1 );
         else {
             q = strstr( p, "<Artist>" );
             if ( q && (q < r) )
-                p = getResultFromXML( p, "Artist", sectionEnd,
-                                      result->authors );
+                p = getResultFromXML_s( p, "Artist", sectionEnd,
+                                        result->authors,
+                                        MAX_AUTHORINFO_LENGTH - 1 );
             else {
                 q = strstr( p, "<Label>" );
                 if ( q && (q < r) )
-                    p = getResultFromXML( p, "Label", sectionEnd,
-                                          result->authors );
+                    p = getResultFromXML_s( p, "Label", sectionEnd,
+                                            result->authors,
+                                            MAX_AUTHORINFO_LENGTH - 1 );
             }
         }
 
         q = strstr( p, "<ListPrice><Amount>" );
         if ( q && (q < r) )
-            p = getResultFromXML( q, "Amount", sectionEnd,
-                                  result->listPrice );
+            p = getResultFromXML_s( q, "Amount", sectionEnd,
+                                    result->listPrice, MAX_PRICE_LENGTH - 1 );
 
         q = strstr( p, "<Manufacturer>" );
         if ( q && (q < r) )
-            p = getResultFromXML( p, "Manufacturer", sectionEnd,
-                                  result->manufacturer );
+            p = getResultFromXML_s( p, "Manufacturer", sectionEnd,
+                                    result->manufacturer,
+                                    MAX_MANUFACTURER_LENGTH - 1 );
 
         q = strstr( p, "<PublicationDate>" );
         if ( q && (q < r) )
-            p = getResultFromXML( p, "PublicationDate", sectionEnd,
-                                  result->releaseDate );
+            p = getResultFromXML_s( p, "PublicationDate", sectionEnd,
+                                    result->releaseDate, MAX_DATELENGTH - 1 );
         else {
             q = strstr( p, "<ReleaseDate>" );
             if ( q && (q < r) )
-                p = getResultFromXML( p, "ReleaseDate", sectionEnd,
-                                      result->releaseDate );
+                p = getResultFromXML_s( p, "ReleaseDate", sectionEnd,
+                                        result->releaseDate,
+                                        MAX_DATELENGTH - 1 );
         }
 
         q = strstr( p, "<Title>" );
         if ( q && (q < r) )
-            p = getResultFromXML( p, "Title", sectionEnd,
-                                  result->productName );
+            p = getResultFromXML_s( p, "Title", sectionEnd,
+                                    result->productName,
+                                    MAX_PRODUCTSNAME_LENGTH - 1 );
 
         // OfferSummary
         result->availability[0] = NUL;
@@ -1122,33 +1144,36 @@ getItemsFromResultSmall(
 
         q = strstr( p, "<LowestNewPrice>" );
         if ( q && (q < r) )
-            p = getResultFromXML( q, "Amount", sectionEnd,
-                                  result->amazonPrice );
+            p = getResultFromXML_s(q, "Amount", sectionEnd,
+                                   result->amazonPrice, MAX_PRICE_LENGTH - 1);
 
         q = strstr( p, "<LowestUsedPrice>" );
         if ( q && (q < r) )
-            p = getResultFromXML( q, "Amount", sectionEnd,
-                                  result->usedPrice );
+            p = getResultFromXML_s( q, "Amount", sectionEnd,
+                                    result->usedPrice, MAX_PRICE_LENGTH - 1 );
 
         if ( result->listPrice[0] == NUL ) {
             q = strstr( p, "<Amount>" );
             if ( q && (q < r) )
-                p = getResultFromXML( p, "Amount", sectionEnd,
-                                      result->listPrice );
+                p = getResultFromXML_s( p, "Amount", sectionEnd,
+                                        result->listPrice,
+                                        MAX_PRICE_LENGTH - 1 );
         }
 
         if ( result->amazonPrice[0] == NUL ) {
             q = strstr( p, "<FormattedPrice>" );
             if ( q && (q < r) )
-                p = getResultFromXML( p, "FormattedPrice", sectionEnd,
-                                      result->amazonPrice );
+                p = getResultFromXML_s( p, "FormattedPrice", sectionEnd,
+                                        result->amazonPrice,
+                                        MAX_PRICE_LENGTH - 1 );
         }
 
         // Offers
         q = strstr( p, "<Availability>" );
         if ( q && (q < r) )
-            p = getResultFromXML( p, "Availability", sectionEnd,
-                                  result->availability );
+            p = getResultFromXML_s( p, "Availability", sectionEnd,
+                                    result->availability,
+                                    MAX_LOGICALLINELEN - 1 );
 
         numberOfItems++;
         if ( numberOfItems >= *numOfItems )
@@ -1819,7 +1844,7 @@ searchItemsOnAmazon4(
         break;
     }
 
-    sz = MAX_CONTENT_SIZE * 4;
+    sz = MAX_CONTENT_SIZE * 64;
     rcvBuf = (char *)malloc( sz );
     if ( !rcvBuf )
         return ( numberOfItems );
@@ -1827,7 +1852,7 @@ searchItemsOnAmazon4(
     *numOfItems = 0;
     do {
         p = sjis2utf( keyword );
-        sz     = MAX_CONTENT_SIZE * 4;
+        sz     = MAX_CONTENT_SIZE * 64;
         offset = unit * ITEMS_PER_PAGE;
         numberOfItems = (numberOfMaxItems - *numOfItems) >= ITEMS_PER_PAGE
                             ? ITEMS_PER_PAGE
@@ -1847,6 +1872,7 @@ searchItemsOnAmazon4(
                  xmlrpc_p->amazonAssociateID,
                  typeString,
                  page );
+        assert( strlen( targetURL ) < BUFFER_SIZE );
 
         if ( strcmp( modeString, "Blended" ) != 0 )
             sprintf( targetURL + strlen(targetURL),
@@ -1863,6 +1889,7 @@ searchItemsOnAmazon4(
 
         setUpReceiveBuffer( rcvBuf, sz );
         ret = httpGetBuffer( targetURL, rcvBuf, FALSE );
+        assert( strlen( rcvBuf ) < MAX_CONTENT_SIZE * 64 );
 
         if ( (ret != -1) && (rcvBuf[0] != NUL) ) {
             if ( !strncmp( typeString, "Small", 5 ) )

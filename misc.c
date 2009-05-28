@@ -5,6 +5,9 @@
  * History:
  * $Log: /comm/xmlRPC/misc.c $
  * 
+ * 2     09/05/27 2:56 tsupo
+ * ./noproxy.txt ファイルがあれば、「proxyを使わない」と判断するようにした
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -316,10 +319,11 @@
  */
 
 #include "xmlRPC.h"
+#include <sys/stat.h>
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/misc.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/misc.c 2     09/05/27 2:56 tsupo $";
 #endif
 
 #ifdef  _MSC_VER
@@ -1144,12 +1148,18 @@ getProxyInfo(
         char           *proxyPassword
     )
 {
-    FILE    *fp;
-    BOOL    isActive = FALSE;
-    char    filename[MAX_PATH];
+    FILE        *fp;
+    BOOL        isActive = FALSE;
+    char        filename[MAX_PATH];
+    struct stat s;
 
     if ( !useProxy || !proxyServer || !proxyPort )
         return;
+
+    if ( stat( "./noproxy.txt", &s ) == 0 ) {
+        *useProxy = FALSE;
+        return;
+    }
 
 #ifdef  WIN32
     if ( __argv && __argv[0] && __argv[0][0] ) {

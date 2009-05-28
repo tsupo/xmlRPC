@@ -1,12 +1,18 @@
-//  $Header: /comm/xmlRPC/amazon.h 1     09/05/14 3:46 tsupo $
+//  $Header: /comm/xmlRPC/amazon.h 2     09/05/29 7:09 tsupo $
 /*! @file
  *  @brief Amazon Web Services 関連各種定義
  *  @author tsujimura543
- *  @date $Date: 09/05/14 3:46 $
- *  @version $Revision: 1 $
+ *  @date $Date: 09/05/29 7:09 $
+ *  @version $Revision: 2 $
  *  @note
  * History:
  * $Log: /comm/xmlRPC/amazon.h $
+ * 
+ * 2     09/05/29 7:09 tsupo
+ * 1.267版
+ * 
+ * 25    09/05/28 18:37 Tsujimura543
+ * バッファオーバーラン対策を強化
  * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
@@ -512,7 +518,7 @@
 #define MAX_PRODUCTSNAME_LENGTH 256  //!< 「商品名、書名」最大長
 #define MAX_AUTHORINFO_LENGTH   128  //!< 「作者、編者」最大長
 #define MAX_MANUFACTURER_LENGTH 128  //!< 「発行元、発売元」最大長
-#define MAX_PRICE_LENGTH        16   //!< 「定価、販売価格」最大長
+#define MAX_PRICE_LENGTH        48   //!< 「定価、販売価格」最大長
 #define MAX_NODEID_LENGTH       16   //!< 「ノードID」最大長
 #define MAX_NODENAME_LENGTH     80   //!< 「ジャンル名」最大長
 #define MAX_MEDIALEN            40   //!< 「販売形態」最大長
@@ -529,14 +535,14 @@
 //! LITEタイプ
 /** type を lite に指定して検索したときの検索結果を格納する */
 typedef struct amazonSearchResultLite   {
-    char    url[MAX_URLLENGTH];                    //!< 商品ページURL
+    char    url[MAX_URLLENGTH_MAX];                //!< 商品ページURL
     char    asin[MAX_NAMELEN];                     //!< ASIN
     char    productName[MAX_PRODUCTSNAME_LENGTH];  //!< 商品名、書名
     char    authors[MAX_AUTHORINFO_LENGTH];        //!< 作者、編者
     char    releaseDate[MAX_DATELENGTH];           //!< 発行年月日
     char    manufacturer[MAX_MANUFACTURER_LENGTH]; //!< 発行元、発売元
     char    imageURLsmall[MAX_URLLENGTH];          //!< 小さな画像のURL
-    char    imageURLmedium[MAX_URLLENGTH];         //!< 普通サイズの画像のURL
+    char    imageURLmedium[MAX_URLLENGTH];        //!< 普通サイズの画像のURL
     char    imageURLlarge[MAX_URLLENGTH];          //!< 大きな画像のURL
     char    availability[MAX_LOGICALLINELEN];      //!< 在庫状況
     char    listPrice[MAX_PRICE_LENGTH];           //!< 定価
@@ -552,7 +558,7 @@ typedef struct amazonSearchResultLite   {
 //! HEAVYタイプ
 /** type を heavy に指定して検索したときの検索結果を格納する */
 typedef struct amazonSearchResultHeavy  {
-    char    url[MAX_URLLENGTH];                  //!< 商品ページURL
+    char    url[MAX_URLLENGTH_MAX];              //!< 商品ページURL
     char    asin[MAX_NAMELEN];                   //!< ASIN
     char    productName[MAX_PRODUCTSNAME_LENGTH];//!< 商品名、書名
     char    authors[MAX_AUTHORINFO_LENGTH];      //!< 作者、編者

@@ -8,6 +8,15 @@
  * History:
  * $Log: /comm/xmlRPC/xmlRPCutil.c $
  * 
+ * 2     09/05/29 7:09 tsupo
+ * 1.267版
+ * 
+ * 39    09/05/28 18:58 Tsujimura543
+ * getResultFromXML_s() を修正
+ * 
+ * 38    09/05/28 18:36 Tsujimura543
+ * getResultFromXML_s() を追加
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -127,10 +136,11 @@
  */
 
 #include "xmlRPC.h"
+#include <assert.h>
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/xmlRPCutil.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/xmlRPCutil.c 2     09/05/29 7:09 tsupo $";
 #endif
 
 #ifdef  _MSC_VER
@@ -986,6 +996,7 @@ getResultFromXML(
 
     sprintf( targetTag, "<%s>", tagName );
     len = strlen( targetTag );
+    assert( len < MAX_NAMELEN );
 
     q = strstr( p, targetTag );
     r = strstr( p, sectionEnd );
@@ -1005,6 +1016,47 @@ getResultFromXML(
 
     return ( (char *)p );
 }
+
+char    *
+getResultFromXML_s(
+        const char *xmlSrc,
+        const char *tagName,
+        const char *sectionEnd,
+        char       *result,
+        size_t     result_size
+    )
+{
+    const char  *p = xmlSrc, *q, *r;
+    char        targetTag[MAX_NAMELEN];
+    int         len;
+
+    if ( result_size > 0 ) {
+        sprintf( targetTag, "<%s>", tagName );
+        len = strlen( targetTag );
+        assert( len < MAX_NAMELEN );
+
+        q = strstr( p, targetTag );
+        r = strstr( p, sectionEnd );
+        if ( q && r ) {
+            if ( q < r ) {
+                q += len;
+                r = strchr( q, '<' );
+                if ( r ) {
+                    size_t  l = min( (int)result_size, (r - q) );
+                    strncpy( result, q, l );
+                    result[l] = NUL;
+                    p = r + (len + 1);
+                }
+                else
+                    p = q + 1;
+            }
+        }
+    }
+
+    return ( (char *)p );
+}
+
+
 
 char    *
 getIntegerFromXML(
