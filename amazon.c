@@ -4,6 +4,16 @@
  * History:
  * $Log: /comm/xmlRPC/amazon.c $
  * 
+ * 3     09/06/02 2:49 tsupo
+ * 1.268版
+ * 
+ * 43    09/06/01 19:06 Tsujimura543
+ * Product Advertising API (+ HMAC-SHA256方式署名付き) 対応
+ * [動作確認済み]
+ * 
+ * 42    09/06/01 16:21 Tsujimura543
+ * amazonAccessKeyID と amazonAccessKeySecret を追加
+ * 
  * 2     09/05/29 7:09 tsupo
  * 1.267版
  * 
@@ -145,321 +155,17 @@
 
 #include "xmlRPC.h"
 #include "amazon.h"
+#include <openssl/x509.h>
+
 #include <assert.h>
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/amazon.c 2     09/05/29 7:09 tsupo $";
+"$Header: /comm/xmlRPC/amazon.c 3     09/06/02 2:49 tsupo $";
 #endif
 
-
-/*
- *  検索結果解析 LITE版
- */
-int
-getItemsFromResultLite(
-        const char  *xmlSrc,        /* (I) 検索結果 (xml)       */
-        int         *numOfItems,    /* (I/O) 検索結果アイテム数 */
-        AMAZON_LITE *result         /* (O) 検索結果格納領域     */
-    )
-{
-    int         numberOfItems = 0;
-    const char  *p, *q;
-    const char  *sectionEnd = "</Details>";
-
-    /*
-     * LITE の場合
-     *
-     * <Details url="http://www.amazon.co.jp/exec/obidos/ASIN/4757512295/tsuporoswebpa-22?dev-t=D3622K0GSMQGO7%26camp=2025%26link_code=xm2">
-     *    <Asin>4757512295</Asin>
-     *    <ProductName>商品名</ProductName>
-     *    <Catalog>Book</Catalog>
-     *    <Authors>
-     *       <Author>著作者</Author>
-     *    </Authors>
-     *    <ReleaseDate>2004/08/06</ReleaseDate>
-     *    <Manufacturer>出版社</Manufacturer>
-     *    <ImageUrlSmall>http://images-jp.amazon.com/images/P/4757512295.09.THUMBZZZ.jpg</ImageUrlSmall>
-     *    <ImageUrlMedium>http://images-jp.amazon.com/images/P/4757512295.09.MZZZZZZZ.jpg</ImageUrlMedium>
-     *    <ImageUrlLarge>http://images-jp.amazon.com/images/P/4757512295.09.LZZZZZZZ.jpg</ImageUrlLarge>
-     *    <Availability>在庫状況</Availability>
-     *    <ListPrice>定価</ListPrice>
-     *    <OurPrice>販売価格</OurPrice>
-     *    <UsedPrice>中古価格</UsedPrice>
-     * </Details>
-     */
-
-    p = xmlSrc;
-    while ( p && *p ) {
-        p = strstr( p, "<Details url=\"" );
-        if ( !p )
-            break;
-
-        memset( result, 0x00, sizeof ( AMAZON_LITE ) );
-        p += 14;
-        q = strchr( p, '"' );
-        if ( q ) {
-            strncpy( result->url, p, q - p );
-            result->url[q - p] = NUL;
-            p = q + 1;
-        }
-
-        p = getResultFromXML( p, "Asin",        sectionEnd,
-                              result->asin );
-        p = getResultFromXML( p, "ProductName", sectionEnd,
-                              result->productName );
-
-        p = getListFromXML( p, "Authors", "Author", sectionEnd,
-                            result->authors, MAX_AUTHORINFO_LENGTH );
-
-        p = getResultFromXML( p, "ReleaseDate",    sectionEnd,
-                              result->releaseDate );
-        p = getResultFromXML( p, "Manufacturer",   sectionEnd,
-                              result->manufacturer );
-        p = getResultFromXML( p, "ImageUrlSmall",  sectionEnd,
-                              result->imageURLsmall );
-        p = getResultFromXML( p, "ImageUrlMedium", sectionEnd,
-                              result->imageURLmedium );
-        p = getResultFromXML( p, "ImageUrlLarge",  sectionEnd,
-                              result->imageURLlarge );
-        p = getResultFromXML( p, "Availability",   sectionEnd,
-                              result->availability );
-        p = getResultFromXML( p, "ListPrice",      sectionEnd,
-                              result->listPrice );
-        p = getResultFromXML( p, "OurPrice",       sectionEnd,
-                              result->amazonPrice );
-        p = getResultFromXML( p, "UsedPrice",      sectionEnd,
-                              result->usedPrice );
-
-        numberOfItems++;
-        if ( numberOfItems >= *numOfItems )
-            break;
-        result++;
-    }
-    *numOfItems = numberOfItems;
-
-    return ( numberOfItems );
-}
-
-/*
- *  検索結果解析 HEAVY版
- */
-int
-getItemsFromResultHeavy(
-        const char   *xmlSrc,       /* (I) 検索結果 (xml)       */
-        int          *numOfItems,   /* (I/O) 検索結果アイテム数 */
-        AMAZON_HEAVY *result        /* (O) 検索結果格納領域     */
-    )
-{
-    int             numberOfItems = 0;
-    unsigned long   numOfNodes    = 0;
-    unsigned long   numOfReview   = 0;
-    const char      *p, *q, *r;
-    const char      *sectionEnd    = "</Details>";
-    const char      *nodeListEnd   = "</BrowseList>";
-    const char      *nodeEnd       = "</BrowseNode>";
-    const char      *reviewListEnd = "</Reviews>";
-    const char      *reviewEnd     = "</CustomerReview>";
-
-    /*
-     * HEAVY の場合
-     * <Details url="http://www.amazon.co.jp/exec/obidos/ASIN/4757512295/tsuporoswebpa-22?dev-t=D3622K0GSMQGO7%26camp=2025%26link_code=xm2">
-     *    <Asin>4757512295</Asin>
-     *    <ProductName>商品名</ProductName>
-     *    <Catalog>Book</Catalog>
-     *    <Authors>
-     *       <Author>著作者</Author>
-     *    </Authors>
-     *    <ReleaseDate>2004/08/06</ReleaseDate>
-     *    <Manufacturer>出版社</Manufacturer>
-     *    <ImageUrlSmall>http://images-jp.amazon.com/images/P/4757512295.09.THUMBZZZ.jpg</ImageUrlSmall>
-     *    <ImageUrlMedium>http://images-jp.amazon.com/images/P/4757512295.09.MZZZZZZZ.jpg</ImageUrlMedium>
-     *    <ImageUrlLarge>http://images-jp.amazon.com/images/P/4757512295.09.LZZZZZZZ.jpg</ImageUrlLarge>
-     *    <ListPrice>定価</ListPrice>
-     *    <OurPrice>販売価格</OurPrice>
-     *    <UsedPrice>中古価格</UsedPrice>
-     *    <SalesRank>33,288</SalesRank>
-     *    <BrowseList>
-     *       <BrowseNode>
-     *          <BrowseId>12075941</BrowseId>
-     *          <BrowseName>ノード名</BrowseName>
-     *       </BrowseNode>
-     *    </BrowseList>
-     *    <Media>発行形態</Media>
-     *    <Isbn>4757505523</Isbn>
-     *    <Availability>在庫状況</Availability>
-     *    <Reviews>
-     *       <AvgCustomerRating>4</AvgCustomerRating>
-     *       <TotalCustomerReviews>1</TotalCustomerReviews>
-     *       <CustomerReview>
-     *          <Rating>4</Rating>
-     *          <Summary>概要</Summary>
-     *          <Comment>コメント</Comment>
-     *       </CustomerReview>
-     *    </Reviews>
-     *    <SimilarProducts>
-     *       <Product>4757511744</Product>
-     *       <Product>4757512392</Product>
-     *       <Product>4757503687</Product>
-     *       <Product>4757502877</Product>
-     *       <Product>4757512635</Product>
-     *    </SimilarProducts>
-     * </Details>
-     */
-
-    p = xmlSrc;
-    while ( p && *p ) {
-        p = strstr( p, "<Details url=\"" );
-        if ( !p )
-            break;
-
-        memset( result, 0x00, sizeof ( AMAZON_HEAVY ) );
-        numOfNodes  = 0;
-        numOfReview = 0;
-        p += 14;
-        q = strchr( p, '"' );
-        if ( q ) {
-            strncpy( result->url, p, q - p );
-            result->url[q - p] = NUL;
-            p = q + 1;
-        }
-
-        p = getResultFromXML( p, "Asin",        sectionEnd,
-                              result->asin );
-        p = getResultFromXML( p, "ProductName", sectionEnd,
-                              result->productName );
-
-        p = getListFromXML( p, "Authors", "Author", sectionEnd,
-                            result->authors, MAX_AUTHORINFO_LENGTH );
-
-        p = getResultFromXML( p, "ReleaseDate",    sectionEnd,
-                              result->releaseDate );
-        p = getResultFromXML( p, "Manufacturer",   sectionEnd,
-                              result->manufacturer );
-        p = getResultFromXML( p, "ImageUrlSmall",  sectionEnd,
-                              result->imageURLsmall );
-        p = getResultFromXML( p, "ImageUrlMedium", sectionEnd,
-                              result->imageURLmedium );
-        p = getResultFromXML( p, "ImageUrlLarge",  sectionEnd,
-                              result->imageURLlarge );
-        p = getResultFromXML( p, "ListPrice",      sectionEnd,
-                              result->listPrice );
-        p = getResultFromXML( p, "OurPrice",       sectionEnd,
-                              result->amazonPrice );
-        p = getResultFromXML( p, "UsedPrice",      sectionEnd,
-                              result->usedPrice );
-        p = getIntegerFromXML(p, "SalesRank",      sectionEnd,
-                              &(result->salesRank) );
-
-        q = strstr( p, "<BrowseList>" );
-        r = strstr( p, sectionEnd );
-        if ( q && r ) {
-            if ( q < r ) {
-                char    *s = strstr( q + 12, nodeListEnd );
-
-                q += 12;
-                r = strchr( q, '<' );
-                while ( r && !strncmp( r, "<BrowseNode>", 12 ) ) {
-                    q = r + 12;
-                    r = strchr( q, '<' );
-
-                    if ( r ) {
-                        p = r;
-                        p = getResultFromXML( p, "BrowseId",   nodeEnd,
-                                result->browseNodes[numOfNodes].browseNode );
-                        p = getResultFromXML( p, "BrowseName", nodeEnd,
-                                result->browseNodes[numOfNodes].nodeName );
-                        numOfNodes++;
-                    }
-
-                    q = strstr( p, nodeEnd );
-                    if ( q ) {
-                        r = strchr( q + strlen(nodeEnd), '<' );
-                        if ( r && (r == s) )
-                            break;
-                    }
-                    else
-                        break;  /* 構文エラー */
-                    if ( numOfNodes >= MAX_NUMOFNODES )
-                        break;
-                }
-
-                p = q + 1;
-            }
-        }
-        result->numOfBrowseNodes = numOfNodes;
-
-        p = getResultFromXML( p, "Media",        sectionEnd,
-                              result->media );
-        p = getResultFromXML( p, "Isbn",         sectionEnd,
-                              result->isbn );
-        p = getResultFromXML( p, "Availability", sectionEnd,
-                              result->availability );
-
-        q = strstr( p, "<Reviews>" );
-        r = strstr( p, sectionEnd );
-        if ( q && r ) {
-            if ( q < r ) {
-                char    *s = strstr( q + 9, reviewListEnd );
-
-                q += 9;
-                r = strchr( q, '<' );
-                if ( r ) {
-                    p = r;
-                    p = getFloatFromXML(  p, "AvgCustomerRating",
-                                          reviewListEnd,
-                                          &(result->reviews.averageRating) );
-                    p = getIntegerFromXML(p, "TotalCustomerReviews",
-                                          reviewListEnd,
-                                          &(result->reviews.numOfReviews) );
-
-                    r = strchr( p, '<' );
-                    while ( r && !strncmp( r, "<CustomerReview>", 16 ) ) {
-                        q = r + 16;
-                        r = strchr( q, '<' );
-                        if ( r ) {
-                            p = r;
-                            p = getIntegerFromXML(p, "Rating",  reviewEnd,
-                               &(result->reviews.review[numOfReview].rating));
-                            p = getResultFromXML( p, "Summary", reviewEnd,
-                                 result->reviews.review[numOfReview].summury);
-                            p = getResultFromXML( p, "Comment", reviewEnd,
-                                 result->reviews.review[numOfReview].comment);
-                            numOfReview++;
-                        }
-
-                        q = strstr( p, reviewEnd );
-                        if ( q ) {
-                            r = strchr( q + strlen(reviewEnd), '<' );
-                            if ( r && (r == s) )
-                                break;
-                        }
-                        else
-                            break;  /* 構文エラー */
-
-                        if ((numOfReview == result->reviews.numOfReviews) ||
-                            (numOfReview >= MAX_NUMOFREVIEWS)               )
-                            break;
-                    }
-                }
-
-                p = q + 1;
-            }
-        }
-        result->reviews.numOfReviews = numOfReview;
-
-        p = getListFromXML( p, "SimilarProducts", "Product", sectionEnd,
-                            result->similarProcducts, MAX_LOGICALLINELEN );
-
-        numberOfItems++;
-        if ( numberOfItems >= *numOfItems )
-            break;
-        result++;
-    }
-    *numOfItems = numberOfItems;
-
-    return ( numberOfItems );
-}
+/* for Product Advertising API */
+char    *makeCreated( time_t t );
 
 
 /* Amazon アソシエイトID の設定 */
@@ -489,251 +195,27 @@ setSubscriptionIDOnAmazon( const char *subscriptionID )
 }
 
 
+/* Product Advertising API     */
+/*    Access Key ID の設定     */
+void
+setAccessKeyIDOnAmazon( const char *key )
+{
+    if ( xmlrpc_p && key && *key )
+        strcpy( xmlrpc_p->amazonAccessKeyID, key );
+}
+
+/*    Secret Access Key の設定 */
+void
+setAccessKeySecretOnAmazon( const char *secret )
+{
+    if ( xmlrpc_p && secret && *secret )
+        strcpy( xmlrpc_p->amazonAccessKeySecret, secret );
+}
+
+
 /* Amazon で検索 */
 #define BUFFER_SIZE     4096
 #define ITEMS_PER_PAGE  10
-
-#if 0
-int
-searchItemsOnAmazon(
-        int        type,        /* (I) heavy or lite        */
-        int        mode,        /* (I) 検索対象分野         */
-        int        searchType,  /* (I) 検索種別             */
-        const char *keyword,    /* (I) 検索対象キーワード   */
-        int        *numOfItems, /* (I/O) 検索結果アイテム数 */
-        void       *result      /* (O) 検索結果格納領域     */
-    )
-{
-    int     ret = 0;
-    char    *typeString  = "";
-    char    *modeString  = "";
-    char    *stypeString = "";
-    char    targetURL[BUFFER_SIZE];
-    char    *rcvBuf;
-    char    *p;
-    int     numberOfItems = 0;
-    size_t  sz;
-
-    switch ( type ) {
-    case AMAZON_TYPE_HEAVY:
-        typeString = "heavy";
-        break;
-    case AMAZON_TYPE_LITE:
-    default:
-        typeString = "lite";
-        break;
-    }
-
-    switch ( mode ) {
-    case AMAZON_MODE_JBOOKS:
-        modeString = "books-jp";
-        break;
-    case AMAZON_MODE_EBOOKS:
-        modeString = "books-us";
-        break;
-    case AMAZON_MODE_MUSIC:
-        modeString = "music-jp";
-        break;
-    case AMAZON_MODE_CLASSIC:
-        modeString = "classical-jp";
-        break;
-    case AMAZON_MODE_DVD:
-        modeString = "dvd-jp";
-        break;
-    case AMAZON_MODE_VIDEO:
-        modeString = "vhs-jp";
-        break;
-    case AMAZON_MODE_ELECTRONICS:
-        modeString = "electronics-jp";
-        break;
-    case AMAZON_MODE_SOFTWARE:
-        modeString = "software-jp";
-        break;
-    case AMAZON_MODE_GAME:
-        modeString = "videogames-jp";
-        break;
-    case AMAZON_MODE_KITCHEN:
-        modeString = "kitchen-jp";
-        break;
-    case AMAZON_MODE_TOYS:
-        modeString = "toys-jp";
-        break;
-    case AMAZON_MODE_HOBBY:
-        modeString = "hobbies-jp";
-        break;
-    case AMAZON_MODE_SPORTS:
-        modeString = "sporting-goods-jp";
-        break;
-    case AMAZON_MODE_BLENDED:
-    default:
-        modeString = "blended";
-        break;
-    }
-
-    switch ( searchType ) {
-    case AMAZON_STYPE_ASIN:
-        stypeString = "ASINSearch";
-        break;
-    case AMAZON_STYPE_NODE:
-        stypeString = "BrowseNodeSearch";
-        break;
-    case AMAZON_STYPE_KEYWORD:
-    default:
-        stypeString = "KeywordSearch";
-        break;
-    }
-
-    sz = MAX_CONTENT_SIZE * 4;
-    rcvBuf = (char *)malloc( sz );
-    if ( !rcvBuf )
-        return ( numberOfItems );
-
-    p = sjis2utf( keyword );
-    sprintf( targetURL,
-#if 0
-             "http://xml-jp.amznxslt.com/onca/xml3?t=%s&dev-t=%s"
-#else
-             "http://xml.amazon.co.jp/onca/xml3?t=%s&dev-t=%s"
-#endif
-             "&type=%s&mode=%s&f=xml&%s=%s&locale=jp",
-             xmlrpc_p->amazonAssociateID, xmlrpc_p->amazonDevelopperKey,
-             typeString, modeString, stypeString,
-             encodeURL( p ? p : keyword ) );
-
-    setUpReceiveBuffer( rcvBuf, sz );
-    ret = httpGetBuffer( targetURL, rcvBuf, FALSE );
-
-    if ( (ret != -1) && (rcvBuf[0] != NUL) ) {
-        if ( !strcmp( typeString, "lite" ) )
-            numberOfItems = getItemsFromResultLite(
-                                rcvBuf, numOfItems, result );
-        else
-            numberOfItems = getItemsFromResultHeavy(
-                                rcvBuf, numOfItems, result );
-    }
-
-    encodeURL( NULL );
-    free( rcvBuf );
-
-    return ( numberOfItems );
-}
-
-
-/* Amazon のベストセラーリスト取得 */
-int
-getSalesRankingOnAmazon(
-        int        type,        /* (I) heavy or lite        */
-        int        mode,        /* (I) 検索対象分野(大枠)   */
-        int        node,        /* (I) 検索対象分野(絞込み) */
-        const char *genre,      /* (I) 検索対象分野名       */
-        int        *numOfItems, /* (I/O) 検索結果アイテム数 */
-        void       *result      /* (O) 検索結果格納領域     */
-    )
-{
-    int     ret = 0;
-    char    *typeString  = "";
-    char    *modeString  = "";
-    char    *stypeString = "";
-    char    targetURL[BUFFER_SIZE];
-    char    *rcvBuf;
-    char    *p;
-    int     numberOfItems = 0;
-    size_t  sz;
-
-    switch ( type ) {
-    case AMAZON_TYPE_HEAVY:
-        typeString = "heavy";
-        break;
-    case AMAZON_TYPE_LITE:
-    default:
-        typeString = "lite";
-        break;
-    }
-
-    switch ( mode ) {
-    case AMAZON_MODE_JBOOKS:
-        modeString = "books-jp";
-        break;
-    case AMAZON_MODE_EBOOKS:
-        modeString = "books-us";
-        break;
-    case AMAZON_MODE_MUSIC:
-        modeString = "music-jp";
-        break;
-    case AMAZON_MODE_CLASSIC:
-        modeString = "classical-jp";
-        break;
-    case AMAZON_MODE_DVD:
-        modeString = "dvd-jp";
-        break;
-    case AMAZON_MODE_VIDEO:
-        modeString = "vhs-jp";
-        break;
-    case AMAZON_MODE_ELECTRONICS:
-        modeString = "electronics-jp";
-        break;
-    case AMAZON_MODE_SOFTWARE:
-        modeString = "software-jp";
-        break;
-    case AMAZON_MODE_GAME:
-        modeString = "videogames-jp";
-        break;
-    case AMAZON_MODE_KITCHEN:
-        modeString = "kitchen-jp";
-        break;
-    case AMAZON_MODE_TOYS:
-        modeString = "toys-jp";
-        break;
-    case AMAZON_MODE_HOBBY:
-        modeString = "hobbies-jp";
-        break;
-    case AMAZON_MODE_SPORTS:
-        modeString = "sporting-goods-jp";
-        break;
-    case AMAZON_MODE_BLENDED:
-    default:
-        modeString = "blended";
-        break;
-    }
-
-    stypeString = "BrowseNodeSearch";
-
-    sz = MAX_CONTENT_SIZE * 4;
-    rcvBuf = (char *)malloc( sz );
-    if ( !rcvBuf )
-        return ( numberOfItems );
-
-    p = sjis2utf( genre );
-    sprintf( targetURL,
-#if 0
-             "http://xml-jp.amznxslt.com/onca/xml3?t=%s&dev-t=%s&"
-#else
-             "http://xml.amazon.co.jp/onca/xml3?t=%s&dev-t=%s&"
-#endif
-             "type=%s&sort=+salesrank&mode=%s&f=xml&%s=%d&genre=%s&locale=jp",
-             xmlrpc_p->amazonAssociateID, xmlrpc_p->amazonDevelopperKey,
-             typeString, modeString, stypeString, node,
-             encodeURL( p ? p : genre ) );
-
-    setUpReceiveBuffer( rcvBuf, sz );
-    ret = httpGetBuffer( targetURL, rcvBuf, FALSE );
-
-    if ( (ret != -1) && (rcvBuf[0] != NUL) ) {
-        if ( !strcmp( typeString, "lite" ) )
-            numberOfItems = getItemsFromResultLite(
-                                rcvBuf, numOfItems, result );
-        else
-            numberOfItems = getItemsFromResultHeavy(
-                                rcvBuf, numOfItems, result );
-    }
-
-    encodeURL( NULL );
-    free( rcvBuf );
-
-    return ( numberOfItems );
-}
-#endif
-
 
 /*
  *  検索結果解析 Small版
@@ -1018,15 +500,6 @@ getItemsFromResultSmall(
 
     *next = FALSE;
     p = xmlSrc;
-#ifdef  _DEBUG
-    {
-        FILE    *fp = fopen( "./amazonResult.xml", "w" );
-        if ( fp ) {
-            fputs( p, fp );
-            fclose( fp );
-        }
-    }
-#endif
     if ( p && *p ) {
         q = strstr( p, "<ItemPage>" );
         if ( q ) {
@@ -1860,32 +1333,96 @@ searchItemsOnAmazon4(
         page++;
         next = FALSE;
 
-     // memset( targetURL, 0x00, BUFFER_SIZE );
-        sprintf( targetURL,
-                 "http://webservices.amazon.co.jp/onca/xml?"
-                 "Service=AWSECommerceService&"
-                 "AWSAccessKeyId=%s&"
-                 "AssociateTag=%s&"
-                 "ResponseGroup=%s&"
-                 "ItemPage=%d&",
-                 xmlrpc_p->amazonSubscriptionID,
-                 xmlrpc_p->amazonAssociateID,
-                 typeString,
-                 page );
-        assert( strlen( targetURL ) < BUFFER_SIZE );
+        if ( xmlrpc_p->amazonAccessKeyID[0]     &&
+             xmlrpc_p->amazonAccessKeySecret[0]    ) {
+            /* Product Advertising API (2009年5月16日以降) */
+            char    req[MAX_DESCRIPTION_LEN];
+            char    message[MAX_DESCRIPTION_LEN * 4];
+            char    digest[MAX_LOGICALLINELEN];
+            char    timeStamp[MAX_DATELENGTH];
+            char    *signature;
 
-        if ( strcmp( modeString, "Blended" ) != 0 )
+            strcpy( timeStamp, makeCreated( 0 ) );
+
+            /* signature の生成 */
+            sprintf( req,
+                     "AWSAccessKeyId=%s&"
+                     "AssociateTag=%s&"
+                     "ContentType=text%%2Fxml&"
+                     "ItemPage=%d&"
+                     "Keywords=%s&"
+                     "Operation=%s&"
+                     "ResponseGroup=%s&"
+                     "SearchIndex=%s&"
+                     "Service=AWSECommerceService&",
+                     xmlrpc_p->amazonAccessKeyID,
+                     xmlrpc_p->amazonAssociateID,
+                     page,
+                     encodeURLi( p ? p : keyword, FALSE ),
+                     stypeString,
+                     typeString,
+                     modeString );
+            if ( strcmp( modeString, "Blended" ) != 0 )
+                strcat( req,
+                         "Sort=titlerank&" );
+            sprintf( req + strlen(req),
+                     "Timestamp=%s",
+                     encodeURLi( timeStamp, FALSE ) );
+
+            sprintf( message,
+                     "%s\n"
+                     "%s\n"
+                     "%s\n"
+                     "%s",
+                     "GET",
+                     "webservices.amazon.co.jp",
+                     "/onca/xml",
+                     req );
+
+            memset( digest, 0x00, MAX_LOGICALLINELEN );
+            hmac_sha256( (unsigned char *)message,
+                         strlen(message),
+                         (unsigned char *)xmlrpc_p->amazonAccessKeySecret,
+                         strlen(xmlrpc_p->amazonAccessKeySecret),
+                         digest );
+            signature = base64((unsigned char *)digest, SHA256_DIGEST_LENGTH);
+
+            /* GET する URL の生成 */
+            sprintf( targetURL,
+                     "http://webservices.amazon.co.jp/onca/xml?"
+                     "%s&"
+                     "Signature=%s",
+                     req,
+                     encodeURLi( signature, FALSE ) );
+        }
+        else {
+            /* 従来の AWS */
+            sprintf( targetURL,
+                     "http://webservices.amazon.co.jp/onca/xml?"
+                     "Service=AWSECommerceService&"
+                     "AWSAccessKeyId=%s&"
+                     "AssociateTag=%s&"
+                     "ResponseGroup=%s&"
+                     "ItemPage=%d&",
+                     xmlrpc_p->amazonSubscriptionID,
+                     xmlrpc_p->amazonAssociateID,
+                     typeString,
+                     page );
+            assert( strlen( targetURL ) < BUFFER_SIZE );
+
+            if ( strcmp( modeString, "Blended" ) != 0 )
+                sprintf( targetURL + strlen(targetURL),
+                         "Sort=titlerank&" );
+
             sprintf( targetURL + strlen(targetURL),
-                     "Sort=titlerank&" );
-
-        sprintf( targetURL + strlen(targetURL),
-                 "Operation=%s&"
-                 "ContentType=text%%2Fxml&"
-                 "Keywords=%s&"
-                 "SearchIndex=%s",
-                 stypeString,
-                 encodeURL( p ? p : keyword ),
-                 modeString );
+                     "Operation=%s&"
+                     "ContentType=text%%2Fxml&"
+                     "Keywords=%s&"
+                     "SearchIndex=%s",
+                     stypeString,
+                     encodeURL( p ? p : keyword ),
+                     modeString );
+        }
 
         setUpReceiveBuffer( rcvBuf, sz );
         ret = httpGetBuffer( targetURL, rcvBuf, FALSE );
@@ -2021,30 +1558,95 @@ getSalesRankingOnAmazon4(
         page++;
         next = FALSE;
 
-        sprintf( targetURL,
-                 "http://webservices.amazon.co.jp/onca/xml?"
-                 "Service=AWSECommerceService&"
-                 "AWSAccessKeyId=%s&"
-                 "AssociateTag=%s&"
-                 "ResponseGroup=%s&"
-                 "ItemPage=%d&",
-                 xmlrpc_p->amazonSubscriptionID,
-                 xmlrpc_p->amazonAssociateID,
-                 typeString,
-                 page );
+        if ( xmlrpc_p->amazonAccessKeyID[0]     &&
+             xmlrpc_p->amazonAccessKeySecret[0]    ) {
+            /* Product Advertising API (2009年5月16日以降) */
+            char    req[MAX_DESCRIPTION_LEN];
+            char    message[MAX_DESCRIPTION_LEN * 4];
+            char    digest[MAX_LOGICALLINELEN];
+            char    timeStamp[MAX_DATELENGTH];
+            char    *signature;
 
-        if ( strcmp( modeString, "Blended" ) != 0 )
+            strcpy( timeStamp, makeCreated( 0 ) );
+
+            /* signature の生成 */
+            sprintf( req,
+                     "AWSAccessKeyId=%s&"
+                     "AssociateTag=%s&"
+                     "BrowseNode=%d&"
+                     "ContentType=text%%2Fxml&"
+                     "ItemPage=%d&"
+                     "Operation=%s&"
+                     "ResponseGroup=%s&"
+                     "SearchIndex=%s&"
+                     "Service=AWSECommerceService&",
+                     xmlrpc_p->amazonAccessKeyID,
+                     xmlrpc_p->amazonAssociateID,
+                     node,
+                     page,
+                     stypeString,
+                     typeString,
+                     modeString );
+            if ( strcmp( modeString, "Blended" ) != 0 )
+                strcat( req,
+                         "Sort=salesrank&" );
+            sprintf( req + strlen(req),
+                     "Timestamp=%s",
+                     encodeURLi( timeStamp, FALSE ) );
+
+            sprintf( message,
+                     "%s\n"
+                     "%s\n"
+                     "%s\n"
+                     "%s",
+                     "GET",
+                     "webservices.amazon.co.jp",
+                     "/onca/xml",
+                     req );
+
+            memset( digest, 0x00, MAX_LOGICALLINELEN );
+            hmac_sha256( (unsigned char *)message,
+                         strlen(message),
+                         (unsigned char *)xmlrpc_p->amazonAccessKeySecret,
+                         strlen(xmlrpc_p->amazonAccessKeySecret),
+                         digest );
+            signature = base64((unsigned char *)digest, SHA256_DIGEST_LENGTH);
+
+            /* GET する URL の生成 */
+            sprintf( targetURL,
+                     "http://webservices.amazon.co.jp/onca/xml?"
+                     "%s&"
+                     "Signature=%s",
+                     req,
+                     encodeURLi( signature, FALSE ) );
+        }
+        else {
+            /* 従来の AWS */
+            sprintf( targetURL,
+                     "http://webservices.amazon.co.jp/onca/xml?"
+                     "Service=AWSECommerceService&"
+                     "AWSAccessKeyId=%s&"
+                     "AssociateTag=%s&"
+                     "ResponseGroup=%s&"
+                     "ItemPage=%d&",
+                     xmlrpc_p->amazonSubscriptionID,
+                     xmlrpc_p->amazonAssociateID,
+                     typeString,
+                     page );
+
+            if ( strcmp( modeString, "Blended" ) != 0 )
+                sprintf( targetURL + strlen(targetURL),
+                         "Sort=salesrank&" );
+
             sprintf( targetURL + strlen(targetURL),
-                     "Sort=salesrank&" );
-
-        sprintf( targetURL + strlen(targetURL),
-                 "Operation=%s&"
-                 "ContentType=text%%2Fxml&"
-                 "BrowseNode=%d&"
-                 "SearchIndex=%s",
-                 stypeString,
-                 node,
-                 modeString );
+                     "Operation=%s&"
+                     "ContentType=text%%2Fxml&"
+                     "BrowseNode=%d&"
+                     "SearchIndex=%s",
+                     stypeString,
+                     node,
+                     modeString );
+        }
 
         setUpReceiveBuffer( rcvBuf, sz );
         ret = httpGetBuffer( targetURL, rcvBuf, FALSE );

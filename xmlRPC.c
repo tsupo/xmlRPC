@@ -5,6 +5,12 @@
  * History:
  * $Log: /comm/xmlRPC/xmlRPC.c $
  * 
+ * 2     09/06/02 2:49 tsupo
+ * 1.268版
+ * 
+ * 36    09/06/01 16:21 Tsujimura543
+ * amazonAccessKeyID と amazonAccessKeySecret を追加
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -126,7 +132,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/xmlRPC.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/xmlRPC.c 2     09/06/02 2:49 tsupo $";
 #endif
 
 
@@ -170,12 +176,14 @@ BOOL APIENTRY DllMain( HANDLE hModule,
             xmlrpc_p->initialized = initializeSocket();
             strcpy( xmlrpc_p->dataDir, "./" );
             strcpy( xmlrpc_p->keywordList, "keyword.lst" );
-            strcpy( xmlrpc_p->bulkfeedsAPIkey, BULKFEEDS_API_KEY );
-            strcpy( xmlrpc_p->amazonAssociateID,   AMAZON_ASSOCIATE_ID );
-            strcpy( xmlrpc_p->amazonSubscriptionID,AMAZON_SUBSCRIPTION_ID );
-            strcpy( xmlrpc_p->rakutenDeveloperID,  RAKUTEN_DEVELOPER_ID );
-            strcpy( xmlrpc_p->rakutenAffiliateID,  RAKUTEN_AFFILIATE_ID );
-            strcpy( xmlrpc_p->rakutenAffiliateID2, RAKUTEN_AFFILIATE_ID2 );
+            strcpy( xmlrpc_p->bulkfeedsAPIkey,       BULKFEEDS_API_KEY );
+            strcpy( xmlrpc_p->amazonAssociateID,     AMAZON_ASSOCIATE_ID );
+            strcpy( xmlrpc_p->amazonSubscriptionID,  AMAZON_SUBSCRIPTION_ID );
+            strcpy( xmlrpc_p->amazonAccessKeyID,     AMAZON_ASSOCIATE_ID );
+            strcpy( xmlrpc_p->amazonAccessKeySecret, AMAZON_SUBSCRIPTION_ID );
+            strcpy( xmlrpc_p->rakutenDeveloperID,    RAKUTEN_DEVELOPER_ID );
+            strcpy( xmlrpc_p->rakutenAffiliateID,    RAKUTEN_AFFILIATE_ID );
+            strcpy( xmlrpc_p->rakutenAffiliateID2,   RAKUTEN_AFFILIATE_ID2 );
             xmlrpc_p->userAgent[0] = NUL;
             xmlrpc_p->referer[0]   = NUL;
 

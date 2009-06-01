@@ -50,6 +50,12 @@
  * History:
  * $Log: /comm/xmlRPC/xmlRPC.h $
  * 
+ * 5     09/06/02 2:49 tsupo
+ * 1.268版
+ * 
+ * 247   09/06/01 16:21 Tsujimura543
+ * amazonAccessKeyID と amazonAccessKeySecret を追加
+ * 
  * 4     09/05/29 7:09 tsupo
  * 1.267版
  * 
@@ -1066,12 +1072,14 @@ typedef int (__cdecl *CONF_FUNC)( int            *useProxy,
 #ifdef  USE_APIKEY_H
 #include "apiKey.h"
 #else
-#define BULKFEEDS_API_KEY       "--------------------------------"
-#define AMAZON_SUBSCRIPTION_ID  "--------------------"
-#define AMAZON_ASSOCIATE_ID     "-----------"
-#define RAKUTEN_DEVELOPER_ID    "--------------------------------"
-#define RAKUTEN_AFFILIATE_ID    "--------.--------"
-#define RAKUTEN_AFFILIATE_ID2   "--------.--------.--------.--------"
+#define BULKFEEDS_API_KEY           "--------------------------------"
+#define AMAZON_SUBSCRIPTION_ID      "--------------------"
+#define AMAZON_ASSOCIATE_ID         "-----------"
+#define AMAZON_ACCESS_KEY_ID        "--------------------"
+#define AMAZON_ACCESS_KEY_SECRET    "----------------------------------------"
+#define RAKUTEN_DEVELOPER_ID        "--------------------------------"
+#define RAKUTEN_AFFILIATE_ID        "--------.--------"
+#define RAKUTEN_AFFILIATE_ID2       "--------.--------.--------.--------"
 #endif
 
 /* データ定義 */
@@ -1129,6 +1137,7 @@ typedef struct  xmlRPCparameter {
     ushort      statusCode;       /* 直前の http 通信結果(ステータスコード) */
 
 #define MAX_LLLEN   MAX_LOGICALLINELEN
+#define MAX_KLEN    MAX_KEYLENGTH
     char        dataDir[MAX_PATH];  /* データファイル格納先ディレクトリ名   */
     char        userAgent[MAX_LLLEN * 2];/* 明示的に指定する User-Agent の値*/
     char        referer[MAX_URLLENGTH_MAX];/* 明示的に指定する Referer の値 */
@@ -1136,12 +1145,14 @@ typedef struct  xmlRPCparameter {
     size_t      binSize;                                /* 受信データサイズ */
     char        keywordList[MAX_PATH];
                               /* はてなダイアリーキーワードリストファイル名 */
-    char        amazonSubscriptionID[MAX_LLLEN];/* Amazon subscription ID   */
-    char        amazonAssociateID[MAX_LLLEN];   /* Amazon associate ID      */
-    char        bulkfeedsAPIkey[MAX_LLLEN];     /* Bulkfeeds API Key        */
-    char        rakutenDeveloperID[MAX_LLLEN];  /* 楽天デベロッパーID       */
-    char        rakutenAffiliateID[MAX_LLLEN];  /* 楽天アフィリエイトID(旧) */
-    char        rakutenAffiliateID2[MAX_LLLEN]; /* 楽天アフィリエイトID(新) */
+    char        amazonSubscriptionID[MAX_KLEN]; /* Amazon subscription ID   */
+    char        amazonAssociateID[MAX_KLEN];    /* Amazon associate ID      */
+    char        amazonAccessKeyID[MAX_KLEN];    /* Amazon Access Key ID     */
+    char        amazonAccessKeySecret[MAX_KLEN];/* Amazon Secret Access Key */
+    char        bulkfeedsAPIkey[MAX_KLEN];      /* Bulkfeeds API Key        */
+    char        rakutenDeveloperID[MAX_KLEN];   /* 楽天デベロッパーID       */
+    char        rakutenAffiliateID[MAX_KLEN];   /* 楽天アフィリエイトID(旧) */
+    char        rakutenAffiliateID2[MAX_KLEN];  /* 楽天アフィリエイトID(新) */
 #ifdef  USE_AUTHORIZATION_OAUTH
     char        oauth_header[MAX_OAUTH_HEADER_LEN];
 #endif
@@ -3018,6 +3029,16 @@ setAssociateIdOnAmazon( const char *associateID );
 /* Amazon Subscription ID の設定 */
 void
 setSubscriptionIDOnAmazon( const char *subscriptionID );
+
+/* Product Advertising API     */
+/*    Access Key ID の設定     */
+void
+setAccessKeyIDOnAmazon( const char *key );
+
+/*    Secret Access Key の設定 */
+void
+setAccessKeySecretOnAmazon( const char *secret );
+
 
 /* Amazon で検索 */
 /*   取得するデータの種類 */

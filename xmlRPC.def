@@ -126,15 +126,12 @@ EXPORTS
     extractAnalyseOnBulkfeeds       @87
     getRssUrlOnBulkfeeds            @88
 
-;   Feedback API
-;    searchEntryOnFeedback       @89
-
 ;   Amazon Web Services API
     setAssociateIdOnAmazon      @101
-;    setDevelopersTokenOnAmazon  @102
+    setAccessKeyIDOnAmazon      @102
     setSubscriptionIDOnAmazon   @103
-;    searchItemsOnAmazon         @104
-;    getSalesRankingOnAmazon     @105
+    setAccessKeySecretOnAmazon  @104
+;   getSalesRankingOnAmazon     @105
     searchItemsOnAmazon4        @130
     getSalesRankingOnAmazon4    @133
 
@@ -299,73 +296,6 @@ EXPORTS
     getStatusCode           @148
     setSigInfo              @89
     setSigInfo3             @91
-
-;   for JUGEM
-;   loginJugem				@201
-;   postJugem				@202
-;   getCategoryListJugem    @78
-;   getBlogIDsJugem			@229
-
-;   for exciteブログ
-;    loginExciteBlog			@203
-;    postExciteBlog				@204
-;    getCategoryListExciteBlog  @77
-;    getBlogIDsExciteBlog		@230
-
-;   for ヤプログ
-;   loginYaplog             @205
-;   postYaplog              @206
-;   getCategoryListYaplog   @74
-;   getBlogIDsYaplog        @231
-
-;   for mixi
-;    loginMixi           @209
-;    postMixi            @210
-
-;   for アメーバブログ
-;   loginAmeblo				@211
-;   postAmeblo				@212
-;   getCategoryListAmeblo   @80
-
-;   for ドリコムブログ
-;   loginDrecom				@213
-;   postDrecom				@214
-;   getCategoryListDrecom   @75
-;   getBlogIDsDrecom		@232
-
-;   for キヌガサ Web Service
-;    setSecretKeyOnKinugasa  @91
-;    getFriendListOnKinugasa @92
-;    getDiaryListOnKinugasa  @93
-;    getItemListOnKinugasa   @94
-;    loginKinugasa			@215
-;    postKinugasa			@216
-
-;   for エコログ
-;    loginEchoo				@217
-;    postEchoo				@218
-;    getCategoryListEchoo    @76
-;    getBlogIDsEchoo			@233
-
-;   for ウェブリブログ
-;    loginWebry				@219
-;    postWebry				@220
-;    getCategoryListWebry   @79
-;    getBlogIDsWebry		@228
-
-;   for FC2NETWORK
-;    loginFC2NETWORK     @221
-;    postFC2NETWORK      @222
-
-;   for 楽天広場
-;    loginRakuten			@223
-;    postRakuten			@224
-;    getBlogIDsRakuten		@234
-;    getCategoryListRakuten	@235
-
-;   for COLORS
-;    loginColors         @225
-;    postColors          @226
 
 ;   for ココログのファイルマネージャ
     deleteFile          @227

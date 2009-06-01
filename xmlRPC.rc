@@ -54,8 +54,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,1,267
- PRODUCTVERSION 1,0,1,267
+ FILEVERSION 1,0,1,268
+ PRODUCTVERSION 1,0,1,268
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -73,14 +73,14 @@ BEGIN
             VALUE "Comments", "a library for communications via HTTP/HTTPS, XML-RPC API, and Atom Publishing Protocol\0"
             VALUE "CompanyName", "Watching Balloon (KANSOKU-KIKYU) http://watcher.moe-nifty.com/\0"
             VALUE "FileDescription", "xmlRPC.dll - a library for communications via HTTP/HTTPS, XML-RPC API, and Atom Publishing Protocol\0"
-            VALUE "FileVersion", "1, 0, 1, 267\0"
+            VALUE "FileVersion", "1, 0, 1, 268\0"
             VALUE "InternalName", "xmlRPC.dll\0"
             VALUE "LegalCopyright", "Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 tsupo\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "xmlRPC.dll\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "xmlRPC.dll: written by H.Tsujimura (a.k.a. tsupo)\0"
-            VALUE "ProductVersion", "1, 0, 1, 267\0"
+            VALUE "ProductVersion", "1, 0, 1, 268\0"
             VALUE "SpecialBuild", "\0"
         END
     END
