@@ -4,6 +4,12 @@
  * History:
  * $Log: /comm/xmlRPC/atomApi.c $
  * 
+ * 2     09/06/05 2:13 tsupo
+ * 1.269版
+ * 
+ * 52    09/06/04 21:24 Tsujimura543
+ * listCategoriesOnAtomAPI() を修正 (はてなダイアリー関連)
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -187,7 +193,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/atomApi.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/atomApi.c 2     09/06/05 2:13 tsupo $";
 #endif
 
 #ifdef  _MSC_VER
@@ -1094,14 +1100,16 @@ listCategoriesOnAtomAPI(
          !categories                               )
         return ( num );
 
-    if ( (xmlrpc_p->blogKind == BLOGKIND_BLOGGER) ||
-         (xmlrpc_p->blogKind == BLOGKIND_SONET)   ||
-         (xmlrpc_p->blogKind == BLOGKIND_AMEBLO)  ||
-         (xmlrpc_p->blogKind == BLOGKIND_VOX )       )
+    if ( (xmlrpc_p->blogKind == BLOGKIND_BLOGGER)     ||
+         (xmlrpc_p->blogKind == BLOGKIND_SONET)       ||
+         (xmlrpc_p->blogKind == BLOGKIND_AMEBLO)      ||
+         (xmlrpc_p->blogKind == BLOGKIND_VOX)         ||
+         (xmlrpc_p->blogKind == BLOGKIND_HATENADIARY)    )
         return ( num ); /* Blogger.com には「カテゴリ」の概念がない */
         /* アメーバブログでカテゴリを取得しようとすると、期待しているものと */
         /* は別のものが返ってくるので、とりあえず当分の間、何もせずに即座に */
         /* リターンするようにしておく。                                     */
+        /* はてなダイアリーの Atom PP はカテゴリの取得はサポートしていない  */
     sz = (*numOfCategories * BUFSIZ) / 4 + BUFSIZ * 2 + MAX_CONTENT_SIZE;
     response = (char *)malloc( sz);
     if ( !response )
