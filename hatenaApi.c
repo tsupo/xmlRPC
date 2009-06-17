@@ -7,6 +7,15 @@
  * History:
  * $Log: /comm/xmlRPC/hatenaApi.c $
  * 
+ * 2     09/06/18 0:29 tsupo
+ * 1.270版
+ * 
+ * 72    09/06/16 21:46 Tsujimura543
+ * 「コレクション」の登録時のみ、private(非公開)で投稿できることを確認
+ * (はてなブックマークプラスを使っている場合)
+ * -- 通常のブックマークは API による private 指定方法が不明(不可能?)
+ * -- なため、今後の課題とする
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -271,7 +280,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/hatenaApi.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/hatenaApi.c 2     09/06/18 0:29 tsupo $";
 #endif
 
 
@@ -1718,13 +1727,14 @@ encodeAmpersand( const char *str )
 
 BOOL
 postBookmarkOnHatena(
-        const char *usrname,/* (I) ユーザ名                              */
-        const char *passwd, /* (I) パスワード                            */
-        const char *href,   /* (I) ブックマーク対象 Web ページ URL       */
-        char       *title,  /* (O) 題名                                  */
-        const char *summary,/* (I) コメント                              */
-        const char *tags,   /* (I) tag (空白文字で区切って複数tag指定可) */
-        char       *entryID /* (O) edit用エントリID                      */
+        const char *usrname,   /* (I) ユーザ名                              */
+        const char *passwd,    /* (I) パスワード                            */
+        const char *href,      /* (I) ブックマーク対象 Web ページ URL       */
+        char       *title,     /* (O) 題名                                  */
+        const char *summary,   /* (I) コメント                              */
+        const char *tags,      /* (I) tag (空白文字で区切って複数tag指定可) */
+        BOOL       isPrivate,  /* (I) 非公開か否か (はてブプラスのみ)       */
+        char       *entryID    /* (O) edit用エントリID                      */
     )
 {
     BOOL    ret = FALSE;
@@ -1777,6 +1787,9 @@ postBookmarkOnHatena(
                  "<summary type=\"text/plain\">%s</summary>\n",
                  encodeAmpersand( p ? p : extended ) );
     }
+    if ( isPrivate )
+        sprintf( request + strlen(request),
+                 "<private>1</private>\n" );
     sprintf( request + strlen(request),
              "</entry>" );
 
@@ -2989,13 +3002,14 @@ loginHatenaBookmark(
 /* 新規ブックマークの投稿 + コレクションへの追加 (form への POST) */
 BOOL
 postBookmarkWithCollectionOnHatena(
-        const char *usrname,/* (I) ユーザ名                              */
-        const char *passwd, /* (I) パスワード                            */
-        const char *href,   /* (I) ブックマーク対象 Web ページ URL       */
-        char       *title,  /* (O) 題名                                  */
-        const char *summary,/* (I) コメント                              */
-        const char *tags,   /* (I) tag (空白文字で区切って複数tag指定可) */
-        char       *entryID /* (O) edit用エントリID                      */
+        const char *usrname,   /* (I) ユーザ名                              */
+        const char *passwd,    /* (I) パスワード                            */
+        const char *href,      /* (I) ブックマーク対象 Web ページ URL       */
+        char       *title,     /* (O) 題名                                  */
+        const char *summary,   /* (I) コメント                              */
+        const char *tags,      /* (I) tag (空白文字で区切って複数tag指定可) */
+        BOOL       isPrivate,  /* (I) 非公開か否か (はてブプラスのみ)       */
+        char       *entryID    /* (O) edit用エントリID                      */
     )
 {
     BOOL    ret = FALSE;
@@ -3131,6 +3145,11 @@ postBookmarkWithCollectionOnHatena(
             else
                 sprintf( request + strlen(request),
                          "comment=&" );
+            sprintf( request + strlen(request),
+                     "with_status_op=1&" );
+            if ( isPrivate )
+                sprintf( request + strlen(request),
+                         "private=1&" );
             sprintf( request + strlen(request),
                      "add_asin=1&"
                      "asin=%s&", 

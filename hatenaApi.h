@@ -4,6 +4,15 @@
  * History:
  * $Log: /comm/xmlRPC/hatenaApi.h $
  * 
+ * 2     09/06/18 0:29 tsupo
+ * 1.270版
+ * 
+ * 23    09/06/16 21:46 Tsujimura543
+ * 「コレクション」の登録時のみ、private(非公開)で投稿できることを確認
+ * (はてなブックマークプラスを使っている場合)
+ * -- 通常のブックマークは API による private 指定方法が不明(不可能?)
+ * -- なため、今後の課題とする
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -126,13 +135,14 @@ static void searchKeywordEx( FILE *fp, char *dst, const char *src, int mode );
 
 BOOL
 postBookmarkOnHatena(
-        const char *usrname,/* (I) ユーザ名                              */
-        const char *passwd, /* (I) パスワード                            */
-        const char *href,   /* (I) ブックマーク対象 Web ページ URL       */
-        char       *title,  /* (O) 題名                                  */
-        const char *summary,/* (I) コメント                              */
-        const char *tags,   /* (I) tag (空白文字で区切って複数tag指定可) */
-        char       *entryID /* (O) edit用エントリID                      */
+        const char *usrname,   /* (I) ユーザ名                              */
+        const char *passwd,    /* (I) パスワード                            */
+        const char *href,      /* (I) ブックマーク対象 Web ページ URL       */
+        char       *title,     /* (O) 題名                                  */
+        const char *summary,   /* (I) コメント                              */
+        const char *tags,      /* (I) tag (空白文字で区切って複数tag指定可) */
+        BOOL       isPrivate,  /* (I) 非公開か否か (はてブプラスのみ)       */
+        char       *entryID    /* (O) edit用エントリID                      */
     );
 
 /*
@@ -312,13 +322,14 @@ getNumberOfBookmarksOnHatena(
 /* 新規ブックマークの投稿 + コレクションへの追加 (form への POST) */
 BOOL
 postBookmarkWithCollectionOnHatena(
-        const char *usrname,/* (I) ユーザ名                              */
-        const char *passwd, /* (I) パスワード                            */
-        const char *href,   /* (I) ブックマーク対象 Web ページ URL       */
-        char       *title,  /* (O) 題名                                  */
-        const char *summary,/* (I) コメント                              */
-        const char *tags,   /* (I) tag (空白文字で区切って複数tag指定可) */
-        char       *entryID /* (O) edit用エントリID                      */
+        const char *usrname,   /* (I) ユーザ名                              */
+        const char *passwd,    /* (I) パスワード                            */
+        const char *href,      /* (I) ブックマーク対象 Web ページ URL       */
+        char       *title,     /* (O) 題名                                  */
+        const char *summary,   /* (I) コメント                              */
+        const char *tags,      /* (I) tag (空白文字で区切って複数tag指定可) */
+        BOOL       isPrivate,  /* (I) 非公開か否か (はてブプラスのみ)       */
+        char       *entryID    /* (O) edit用エントリID                      */
     );
 
 
