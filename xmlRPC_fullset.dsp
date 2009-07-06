@@ -54,13 +54,13 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 libeay32.lib ssleay32.lib iconv.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /version:1.271 /dll /machine:I386 /out:"Release/xmlRPC.dll" /libpath:"..\..\openssl-0.9.8k\out32" /libpath:"misc"
+# ADD LINK32 libeay32.lib ssleay32.lib iconv.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /version:1.272 /dll /machine:I386 /out:"Release/xmlRPC.dll" /libpath:"..\..\openssl-0.9.8k\out32" /libpath:"misc"
 # SUBTRACT LINK32 /pdb:none /debug
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
 PostBuild_Desc=copy dll
 PostBuild_Cmds=copy release\xmlRPC.dll xmlRPCtest\release	copy release\xmlRPC.dll ..\cocousagi\release	copy release\xmlRPC.dll ..\anewex\release	copy release\xmlRPC.dll ..\cocousagi\carot\release	copy release\xmlRPC.dll ..\jbooklet\release	copy release\xmlRPC.dll ..\uploadFile\release	copy release\xmlRPC.dll ..\uploadFile\cocoUpple\release	copy release\xmlRPC.dll ..\hkLink\release	copy release\xmlRPC.dll ..\listTB2\release	copy release\xmlRPC.dll ..\sendTB\release	copy release\xmlRPC.dll ..\interDiary\release	copy release\xmlRPC.dll ..\bookey\getBP\release	copy release\xmlRPC.dll ..\bookey\getBPT\release	copy release\xmlRPC.dll ..\bookey\getHB\release	copy release\xmlRPC.dll ..\bookey\getDelicious\release	copy release\xmlRPC.dll ..\bookey\getMyClip\release	copy release\xmlRPC.dll ..\bookey\putDelicious\release	copy release\xmlRPC.dll ..\bookey\putHB\release	copy release\xmlRPC.dll ..\bookey\release	copy release\xmlRPC.dll ..\bookey\getMMmemo\release	copy release\xmlRPC.dll ..\bookey\putBPT\release	copy release\xmlRPC.dll ..\bookey\putMMmemo\release	copy release\xmlRPC.dll ..\asr\release	copy release\xmlRPC.dll ..\subcrawler\release	copy release\xmlRPC.dll ..\poidoro\release	copy\
-       release\xmlRPC.dll ..\simanity\release	copy release\xmlRPC.dll ..\bookey\getBlogPet\Release	copy release\xmlRPC.dll ..\bookey\getBlueDot\Release	copy release\xmlRPC.dll ..\makeRSS\Release	copy release\xmlRPC.dll ..\boopedit\Release	copy release\xmlRPC.dll ..\blogolee\Release	copy release\xmlRPC.dll ..\chirrup\Release	copy release\xmlRPC.dll ..\httpRead\Release	copy release\xmlRPC.dll ..\httpPost\Release
+        release\xmlRPC.dll ..\simanity\release	copy release\xmlRPC.dll ..\bookey\getBlogPet\Release	copy release\xmlRPC.dll ..\bookey\getBlueDot\Release	copy release\xmlRPC.dll ..\makeRSS\Release	copy release\xmlRPC.dll ..\boopedit\Release	copy release\xmlRPC.dll ..\blogolee\Release	copy release\xmlRPC.dll ..\chirrup\Release	copy release\xmlRPC.dll ..\httpRead\Release	copy release\xmlRPC.dll ..\httpPost\Release
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "xmlRPC - Win32 Debug"
@@ -88,12 +88,12 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 libeay32d.lib ssleay32d.lib iconv.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /version:1.271 /dll /incremental:no /map /debug /machine:I386 /out:"Debug/xmlRPC.dll" /pdbtype:sept /libpath:"..\..\openssl-0.9.8k\out32_debug" /libpath:"misc"
+# ADD LINK32 libeay32d.lib ssleay32d.lib iconv.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /version:1.272 /dll /incremental:no /map /debug /machine:I386 /out:"Debug/xmlRPC.dll" /pdbtype:sept /libpath:"..\..\openssl-0.9.8k\out32_debug" /libpath:"misc"
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
 PostBuild_Desc=copy dll
 PostBuild_Cmds=copy debug\xmlRPC.dll xmlRPCtest\debug	copy debug\xmlRPC.dll ..\cocousagi\debug	copy debug\xmlRPC.dll ..\anewex\debug	copy debug\xmlRPC.dll ..\cocousagi\carot\debug	copy debug\xmlRPC.dll ..\jbooklet\debug	copy debug\xmlRPC.dll ..\uploadFile\debug	copy debug\xmlRPC.dll ..\uploadFile\cocoUpple\debug	copy debug\xmlRPC.dll ..\hkLink\debug	copy debug\xmlRPC.dll ..\listTB2\debug	copy debug\xmlRPC.dll ..\sendTB\debug	copy debug\xmlRPC.dll ..\interDiary\debug	copy debug\xmlRPC.dll ..\bookey\getBP\debug	copy debug\xmlRPC.dll ..\bookey\getBPT\debug	copy debug\xmlRPC.dll ..\bookey\getHB\debug	copy debug\xmlRPC.dll ..\bookey\getDelicious\debug	copy debug\xmlRPC.dll ..\bookey\getMyClip\debug	copy debug\xmlRPC.dll ..\bookey\putDelicious\debug	copy debug\xmlRPC.dll ..\bookey\putHB\debug	copy debug\xmlRPC.dll ..\bookey\debug	copy debug\xmlRPC.dll ..\bookey\getMMmemo\debug	copy debug\xmlRPC.dll ..\bookey\putBPT\debug	copy debug\xmlRPC.dll ..\bookey\putMMmemo\debug	copy debug\xmlRPC.dll ..\asr\debug	copy debug\xmlRPC.dll ..\subcrawler\debug	copy debug\xmlRPC.dll ..\poidoro\debug	copy debug\xmlRPC.dll ..\simanity\debug	copy debug\xmlRPC.dll ..\bookey\getBlogPet\debug	copy\
-       debug\xmlRPC.dll ..\bookey\getBlueDot\debug	copy debug\xmlRPC.dll ..\makeRSS\debug	copy debug\xmlRPC.dll ..\boopedit\debug	copy debug\xmlRPC.dll ..\blogolee\debug	copy debug\xmlRPC.dll ..\chirrup\debug	copy debug\xmlRPC.dll ..\httpRead\debug	copy debug\xmlRPC.dll ..\httpPost\debug
+        debug\xmlRPC.dll ..\bookey\getBlueDot\debug	copy debug\xmlRPC.dll ..\makeRSS\debug	copy debug\xmlRPC.dll ..\boopedit\debug	copy debug\xmlRPC.dll ..\blogolee\debug	copy debug\xmlRPC.dll ..\chirrup\debug	copy debug\xmlRPC.dll ..\httpRead\debug	copy debug\xmlRPC.dll ..\httpPost\debug
 # End Special Build Tool
 
 !ENDIF 

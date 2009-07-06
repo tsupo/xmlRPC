@@ -1,11 +1,21 @@
 /*
  *  はてなキーワードリンク関連API
  *
- *      Copyright (c) 2004, 2005, 2006, 2007, 2008 by H.Tsujimura
+ *      Copyright (c) 2004, 2005, 2006, 2007, 2008, 2009 by H.Tsujimura
  *      written by H.Tsujimura
  *
  * History:
  * $Log: /comm/xmlRPC/hatenaApi.c $
+ * 
+ * 3     09/07/07 1:35 tsupo
+ * 1.272版
+ * 
+ * 74    09/07/03 20:56 Tsujimura543
+ * postBookmarkWithCollectionOnHatena() の方も UserAgent を切り替える
+ * ようにした
+ * 
+ * 73    09/07/03 20:38 Tsujimura543
+ * postBookmarkOnHatena() 内で UserAgent を切り替えるようにした
  * 
  * 2     09/06/18 0:29 tsupo
  * 1.270版
@@ -280,7 +290,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/hatenaApi.c 2     09/06/18 0:29 tsupo $";
+"$Header: /comm/xmlRPC/hatenaApi.c 3     09/07/07 1:35 tsupo $";
 #endif
 
 
@@ -1738,7 +1748,6 @@ postBookmarkOnHatena(
     )
 {
     BOOL    ret = FALSE;
-    int     res;
     char    wsse[BUFSIZ];
     char    url[MAX_URLLENGTH];
     char    extended[MAX_DESCRIPTION_LEN * 2];
@@ -1777,26 +1786,25 @@ postBookmarkOnHatena(
     makeExtended( tags, summary, extended );
 
     sprintf( request,
-             "<entry xmlns=\"http://purl.org/atom/ns#\">\n"
-             "<title>dummy</title>\n"
-             "<link rel=\"related\" type=\"text/html\" href=\"%s\" />\n",
+             "<entry xmlns=\"http://purl.org/atom/ns#\">\r\n"
+             "<title>dummy</title>\r\n"
+             "<link rel=\"related\" type=\"text/html\" href=\"%s\" />\r\n",
              encodeAmpersand(href) );
     if ( *extended ) {
         char    *p = sjis2utf(extended);
         sprintf( request + strlen(request),
-                 "<summary type=\"text/plain\">%s</summary>\n",
+                 "<summary type=\"text/plain\">%s</summary>\r\n",
                  encodeAmpersand( p ? p : extended ) );
     }
     if ( isPrivate )
         sprintf( request + strlen(request),
-                 "<private>1</private>\n" );
+                 "<private>1</private>\r\n" );
     sprintf( request + strlen(request),
              "</entry>" );
 
     setUpReceiveBuffer( response, sz );
-    res = httpPostEx2( xmlrpc_p->webServer, xmlrpc_p->webPage,
-                       request, response,
-                       wsse );
+    setUserAgent( "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1)" );//:-)
+    http_postW( url, wsse, NULL, NULL, request, response );
 
     if ( response[0] != NUL ) {
         char    *p, *q;
@@ -3026,6 +3034,7 @@ postBookmarkWithCollectionOnHatena(
     memset( cookie,   0x00, MAX_COOKIE_LEN );
     memset( extended, 0x00, MAX_DESCRIPTION_LEN * 2 );
     makeExtended( tags, summary, extended );
+    setUserAgent( "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1)" );//:-)
 
     /* はてなに login */
     ret = loginHatenaBookmark( usrname, passwd, cookie );
