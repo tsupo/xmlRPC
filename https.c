@@ -5,6 +5,12 @@
  * History:
  * $Log: /comm/xmlRPC/https.c $
  * 
+ * 3     09/07/07 1:28 tsupo
+ * 1.271版
+ * 
+ * 24    09/07/02 23:22 Tsujimura543
+ * SSL_connect() でエラーが発生したときの処理を暫定修正
+ * 
  * 2     09/05/16 2:39 tsupo
  * 「1.263版→1.264版」の変更を取り込む
  * 
@@ -92,7 +98,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/https.c 2     09/05/16 2:39 tsupo $";
+"$Header: /comm/xmlRPC/https.c 3     09/07/07 1:28 tsupo $";
 #endif
 
 #include <stdio.h>
@@ -235,7 +241,17 @@ _openHTTPS()
 
     ret = SSL_connect( ssl );
     if ( ret != 1 ){
-        ERR_print_errors_fp( stderr );
+        int r = SSL_get_error( ssl, ret );
+        if ( r == SSL_ERROR_SYSCALL ) {
+            DWORD err = GetLastError();
+
+            if ( err == WSAECONNRESET )
+                MessageBox( NULL,
+                            "サーバ側から接続を切断されました。    ",
+                            "https 接続失敗",
+                            MB_OK | MB_ICONINFORMATION );
+            return ( -1 );
+        }
 
         if ( xmlrpc_p->useProxy ) {
             // proxy サーバ情報設定し直し
@@ -255,6 +271,7 @@ _openHTTPS()
                                   xmlrpc_p->proxyUserName,
                                   xmlrpc_p->proxyPassword );
         }
+
         return ( -1 );
     }
 

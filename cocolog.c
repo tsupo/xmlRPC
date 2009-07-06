@@ -5,6 +5,19 @@
  * History:
  * $Log: /comm/xmlRPC/cocolog.c $
  * 
+ * 3     09/07/07 1:28 tsupo
+ * 1.271版
+ * 
+ * 20    09/07/03 16:21 Tsujimura543
+ * ログイン失敗時に表示するダイアログの文言を修正
+ * 
+ * 19    09/07/03 16:11 Tsujimura543
+ * ログイン処理、微修正 [依然として、まだ、対応し切れていない]
+ * 
+ * 18    09/07/03 16:01 Tsujimura543
+ * 2009年6月30日のログイン手順変更(シングルサインオンへの移行)に
+ * 対応するための暫定修正 [まだ、対応し切れていない]
+ * 
  * 2     09/05/22 21:07 tsupo
  * 「1.264版→1.265版」の変更を取り込む
  * 
@@ -76,10 +89,11 @@
 
 #include "xmlRPC.h"
 #include "multipart.h"
+#include "md5.h"
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/cocolog.c 2     09/05/22 21:07 tsupo $";
+"$Header: /comm/xmlRPC/cocolog.c 3     09/07/07 1:28 tsupo $";
 #endif
 
 #define COCOLOGFREE_FILEMANAGER \
@@ -155,15 +169,50 @@ getMagicToken(
     return ( magic_token );
 }
 
+static void
+getRealm( char   *request,
+          char   *response,
+          size_t response_size,
+          char   *cookie,
+          char   *realm )
+{
+    char    cookie2[MAX_COOKIE_LEN + 2];
+    strcpy( cookie2, cookie );
+
+    strcpy( request, "https://login.nifty.com/service/realm" );
+    setUpReceiveBuffer( response, response_size );
+    http_getEx( request, response, cookie2 );
+    if ( *response ) {
+        char    *p = strstr( response, "realm=" );
+        if ( p ) {
+            char    *q;
+
+            p += 6;
+            q = strchr( p, '\r' );
+            if ( !q )
+                q = strchr( p, '\n' );
+            if ( q ) {
+                strncpy( realm, p, q - p );
+                realm[q - p] = NUL;
+            }
+            else
+                strcpy( realm, p );
+        }
+    }
+}
+
 int
 loginCocologFiles( const char *username,    // (I) ユーザ名
                    const char *password,    // (I) パスワード
                    char       *cookie )     // (O) クッキー
 {
     int     ret = 0;
+    char    *p;
     char    *request;
     char    *response;
-    char    url[MAX_URLLENGTH];
+    char    url[MAX_URLLENGTH_MAX];
+    char    realm[MAX_KEYLENGTH * 2];
+    char    digest[BUFSIZ];
     size_t  sz = MAX_CONTENT_SIZE;
 
     if ( !cookie )
@@ -188,13 +237,25 @@ loginCocologFiles( const char *username,    // (I) ユーザ名
             xmlrpc_p->blogKind == BLOGKIND_COCOLOGFREE
                 ? COCOLOGFREE_FILEMANAGER
                 : COCOLOG_FILEMANAGER );
-    setTargetURL( url );
+    setUpReceiveBuffer( response, sz );
+    http_getEx( url, response, cookie );
+    if ( *response )
+        getCurrentLocation( url );
+
+    realm[0] = NUL;
+    getRealm( request, response, sz, cookie, realm );
+    sprintf( digest, "%s:%s:%s", username, realm, password );
+    p = MD5( digest );
+    if ( p )
+        strcpy( digest, p );
+
     sprintf( request,
              "username=%s&"
-             "password=%s&"
+             "digest=%s&"
              "remember=1&"
              "submit=%s",
-             username, password,
+             username,
+             digest,
              encodeURL(sjis2utf("ログイン")) );
     setUpReceiveBuffer( response, sz );
 #if 0
@@ -203,7 +264,8 @@ loginCocologFiles( const char *username,    // (I) ユーザ名
                                request, response, cookie,
                                NULL, NULL );
 #else
-    http_postEx( url, "application/x-www-form-urlencoded",
+    http_postEx( url,
+                 "application/x-www-form-urlencoded",
                  request, response, cookie );
 #endif
 
@@ -215,7 +277,9 @@ loginCocologFiles( const char *username,    // (I) ユーザ名
  /* else */ if ( *response ) {
         char    targetString[BUFSIZ];
         sprintf( targetString, "| %sさん", username );
-        if ( strstr( response, sjis2utf(targetString) ) != NULL ) {
+        if ( (strstr( response, sjis2utf(targetString) ) ||
+              strstr( response, sjis2utf("さん | ") )       ) &&
+             strstr( response, sjis2utf(">ログアウト</a>") )     ) {
             ret = 1;    /* ログイン成功 */
             if ( xmlrpc_p->verbose )
                 dputs( "loginCocologFiles: login成功\n" );
@@ -225,6 +289,23 @@ loginCocologFiles( const char *username,    // (I) ユーザ名
             if ( xmlrpc_p->verbose )
                 dputs( "loginCocologFiles: login失敗 (ユーザ名またはパスワー"
                        "ドが違う、あるいはココログの仕様が変わった)\n" );
+            if ( !isatty( fileno( stderr ) ) )
+                MessageBox(
+                    NULL,
+                    "ココログの管理画面へのログインに失敗しました。\r\n\r\n"
+                    "アップロードは成功するのに、削除ができないという    \r\n"
+                    "ような場合、ココログの仕様の何かが変わったことが    \r\n"
+                    "原因であると思われます。",
+                    "login失敗",
+                    MB_OK|MB_ICONERROR );
+            else {
+                fputs(
+                    "ココログの管理画面へのログインに失敗しました。\n",
+                    stderr );
+                fputs(
+                    "おそらく、ココログの仕様が変わったものと思われます。\n",
+                    stderr );
+            }
         }
     }
     else {
