@@ -5,8 +5,11 @@
  * History:
  * $Log: /comm/xmlRPC/cocolog.c $
  * 
- * 4     09/11/23 13:26 tsupo
- * 1.273版
+ * 5     09/11/23 13:50 tsupo
+ * 1.274版
+ * 
+ * 23    09/09/04 14:57 Tsujimura543
+ * 暫定対応実施。SSO のもとでも、magic_token の取得ができるようになった
  * 
  * 22    09/09/02 20:13 Tsujimura543
  * ソースコードを整理
@@ -101,13 +104,23 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/cocolog.c 4     09/11/23 13:26 tsupo $";
+"$Header: /comm/xmlRPC/cocolog.c 5     09/11/23 13:50 tsupo $";
 #endif
 
+#define COCOLOGFREE_APP \
+            "https://app.f.cocolog-nifty.com/t/app"
+#define COCOLOG_APP     \
+            "https://app.cocolog-nifty.com/t/app"
+
+#define COCOLOGFREE_CONTROLPANEL \
+            COCOLOGFREE_APP "/control"
+#define COCOLOG_CONTROLPANEL     \
+            COCOLOG_APP "/control"
+
 #define COCOLOGFREE_FILEMANAGER \
-            "https://app.f.cocolog-nifty.com/t/app/control/files"
+            COCOLOGFREE_CONTROLPANEL "/files"
 #define COCOLOG_FILEMANAGER     \
-            "https://app.cocolog-nifty.com/t/app/control/files"
+            COCOLOG_CONTROLPANEL "/files"
 
 static char *
 getMagicToken(
@@ -119,6 +132,22 @@ getMagicToken(
     )
 {
     char    targetURL[MAX_URLLENGTH];
+
+    /* {@@} ↓ 暫定対応 */
+    sprintf( targetURL,
+             "%s?nwsThough=1",
+             xmlrpc_p->blogKind == BLOGKIND_COCOLOGFREE
+                ? COCOLOGFREE_APP
+                : COCOLOG_APP );
+    setUpReceiveBuffer( *response, *sz );
+    http_getEx( targetURL, *response, cookie ); // なぜかタイムアウトになる
+
+    setUpReceiveBuffer( *response, *sz );
+    http_getEx( xmlrpc_p->blogKind == BLOGKIND_COCOLOGFREE
+                    ? COCOLOGFREE_CONTROLPANEL
+                    : COCOLOG_CONTROLPANEL,
+                *response, cookie );
+    /* {@@} ↑ 暫定対応 */
 
     *magic_token = NUL;
     if ( *path )
@@ -132,12 +161,8 @@ getMagicToken(
                 xmlrpc_p->blogKind == BLOGKIND_COCOLOGFREE
                     ? COCOLOGFREE_FILEMANAGER
                     : COCOLOG_FILEMANAGER );
-    setUserAgent("Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; alpha revision)");
     setUpReceiveBuffer( *response, *sz );
     http_getEx( targetURL, *response, cookie );
-        // ↑ @nifty SSO 移行後、この関数の奥深くで呼び出している
-        //    recvHTTP() が無限待ちになる(今のところ原因不明)
-        //      ↑ 最終的にタイムアウト発生で強制終了する
     if ( **response ) {
         char    *p, *q;
 
@@ -240,8 +265,8 @@ loginCocologFiles( const char *username,    // (I) ユーザ名
 
     strcpy( url, 
             xmlrpc_p->blogKind == BLOGKIND_COCOLOGFREE
-                ? COCOLOGFREE_FILEMANAGER
-                : COCOLOG_FILEMANAGER );
+                ? COCOLOGFREE_APP
+                : COCOLOG_APP );
     setUpReceiveBuffer( response, sz );
     http_getEx( url, response, cookie );
     if ( *response )
@@ -249,65 +274,31 @@ loginCocologFiles( const char *username,    // (I) ユーザ名
 
     realm[0] = NUL;
     getRealm( request, response, sz, cookie, realm );
-    sprintf( digest, "%s:%s:%s", username, realm, password );
-    p = MD5( digest );
-    if ( p )
-        strcpy( digest, p );
-
-    sprintf( request,
-             "username=%s&"
-             "digest=%s&"
-             "remember=1&"
-             "submit=%s",
-             username,
-             digest,
-             encodeURL(sjis2utf("ログイン")) );
-    setUpReceiveBuffer( response, sz );
-    http_postEx( url,
-                 "application/x-www-form-urlencoded",
-                 request, response, cookie );
-    if ( *cookie && strstr( cookie, "SSOID=" ) )
-        ret = 1;    /* ログイン成功 */
-#if 0
-    else if ( *response ) {
-        char    targetString[BUFSIZ];
-        sprintf( targetString, "| %sさん", username );
-        if ( (strstr( response, sjis2utf(targetString) ) ||
-              strstr( response, sjis2utf("さん | ") )       ) &&
-             strstr( response, sjis2utf(">ログアウト</a>") )     ) {
-            ret = 1;    /* ログイン成功 */
-            if ( xmlrpc_p->verbose )
-                dputs( "loginCocologFiles: login成功\n" );
-        }
-        else {
-            ret = 0;    /* ログイン失敗 */
-            if ( xmlrpc_p->verbose )
-                dputs( "loginCocologFiles: login失敗 (ユーザ名またはパスワー"
-                       "ドが違う、あるいはココログの仕様が変わった)\n" );
-            if ( !isatty( fileno( stderr ) ) )
-                MessageBox(
-                    NULL,
-                    "ココログの管理画面へのログインに失敗しました。\r\n\r\n"
-                    "アップロードは成功するのに、削除ができないという    \r\n"
-                    "ような場合、ココログの仕様の何かが変わったことが    \r\n"
-                    "原因であると思われます。",
-                    "login失敗",
-                    MB_OK|MB_ICONERROR );
+    if ( realm[0] ) {
+        sprintf( digest, "%s:%s:%s", username, realm, password );
+        p = MD5( digest );
+        if ( p ) {
+            strcpy( digest, p );
+            sprintf( request,
+                     "username=%s&"
+                     "digest=%s&"
+                     "remember=1&"
+                     "submit=%s",
+                     username,
+                     digest,
+                     encodeURL(sjis2utf("ログイン")) );
+            setUpReceiveBuffer( response, sz );
+            http_postEx( url,
+                         "application/x-www-form-urlencoded",
+                         request, response, cookie );
+            if ( *cookie && strstr( cookie, "SSOID=" ) )
+                ret = 1;    /* ログイン成功 */
             else {
-                fputs(
-                    "ココログの管理画面へのログインに失敗しました。\n",
-                    stderr );
-                fputs(
-                    "おそらく、ココログの仕様が変わったものと思われます。\n",
-                    stderr );
+                ret = 0;    /* ログイン失敗 */
+                if ( xmlrpc_p->verbose )
+                    dputs( "loginCocologFiles: login失敗\n" );
             }
         }
-    }
-#endif
-    else {
-        ret = 0;        /* サーバとの通信失敗 */
-        if ( xmlrpc_p->verbose )
-            dputs( "loginCocologFiles: login失敗 (サーバとの通信失敗)\n" );
     }
 
     encodeURL( NULL );
@@ -363,6 +354,11 @@ uploadCocologFiles( FILEINF *fileInf, // (I)   アップロードするファイルに関す
 
     /* magic_token を取得 */
     getMagicToken( "", magic_token, &response, &sz, cookie );
+    if ( magic_token[0] == NUL ) {
+        free( response );
+        free( request  );
+        return ( ret );
+    }
 
     /* ファイルをアップロード */
     sprintf( contentType, "multipart/form-data; boundary=%s", separator );
@@ -374,10 +370,9 @@ uploadCocologFiles( FILEINF *fileInf, // (I)   アップロードするファイルに関す
     strcpy( tail, 
             makeMultiPartItem( separator, MULITIPART_ITEM_TYPE_STRING,
                                "__mode", 0, "upload", NULL ) );
-    if ( magic_token[0] )
-        strcat( tail, 
-                makeMultiPartItem( separator, MULITIPART_ITEM_TYPE_STRING,
-                                   "magic_token", 0, magic_token, NULL ) );
+    strcat( tail, 
+            makeMultiPartItem( separator, MULITIPART_ITEM_TYPE_STRING,
+                               "magic_token", 0, magic_token, NULL ) );
     strcat( tail, 
             makeMultiPartItem( separator, MULITIPART_ITEM_TYPE_STRING,
                                "path", 0, NULL, NULL ) );
@@ -453,26 +448,16 @@ uploadCocologFiles( FILEINF *fileInf, // (I)   アップロードするファイルに関す
                             ? COCOLOGFREE_FILEMANAGER
                             : COCOLOG_FILEMANAGER );
                 setTargetURL( url );
-                if ( magic_token[0] )
-                    sprintf( request,
-                             "__mode=upload&"
-                             "magic_token=%s&"
-                             "temp=%s&"
-                             "path=&"
-                             "name=%s&"
-                             "overwrite_yes=%s",
-                             magic_token,
-                             temp, r,
-                             encodeURL(sjis2utf("ファイルを置き換えます")) );
-                else
-                    sprintf( request,
-                             "__mode=upload&"
-                             "temp=%s&"
-                             "path=&"
-                             "name=%s&"
-                             "overwrite_yes=%s",
-                             temp, r,
-                             encodeURL(sjis2utf("ファイルを置き換えます")) );
+                sprintf( request,
+                         "__mode=upload&"
+                         "magic_token=%s&"
+                         "temp=%s&"
+                         "path=&"
+                         "name=%s&"
+                         "overwrite_yes=%s",
+                         magic_token,
+                         temp, r,
+                         encodeURL(sjis2utf("ファイルを置き換えます")) );
                 setUpReceiveBuffer( response, sz );
                 ret = httpPostWithSession(
                             xmlrpc_p->webServer, xmlrpc_p->webPage,
@@ -590,6 +575,9 @@ deleteCocologFiles( const char *url,        // (I)   削除したいファイルの URL
     memset( request,  0x00, MAX_CONTENT_SIZE );
 
     /* magic_token を取得 */
+    setReferer( xmlrpc_p->blogKind == BLOGKIND_COCOLOGFREE
+                    ? COCOLOGFREE_FILEMANAGER
+                    : COCOLOG_FILEMANAGER );
     getMagicToken( path, magic_token, &response, &sz, cookie );
 
     /* ファイルを削除 */
@@ -621,41 +609,22 @@ deleteCocologFiles( const char *url,        // (I)   削除したいファイルの URL
                      magic_token,
                      filename,
                      encodeURL( sjis2utf("削除する") ) );
-    }
-    else {
-        if ( path[0] )
-            sprintf( request,
-                     "type=file&"
-                     "__mode=delete&"
-                     "path=%s&"
-                     "id=%s&"
-                     "submit=%s",
-                     path, filename,
-                     encodeURL( sjis2utf("削除する") ) );
-        else
-            sprintf( request,
-                     "type=file&"
-                     "__mode=delete&"
-                     "path=&"
-                     "id=%s&"
-                     "submit=%s",
-                     filename,
-                     encodeURL( sjis2utf("削除する") ) );
-    }
-    setUpReceiveBuffer( response, sz );
-    ret = httpPostWithSession( xmlrpc_p->webServer, xmlrpc_p->webPage,
-                               "application/x-www-form-urlencoded",
-                               request, response, cookie,
-                               NULL, NULL );
-    if ( response[0] ) {
-        ret = 1;
-        if ( xmlrpc_p->verbose )
-            dputs( "deleteCocologFiles: 削除リクエスト発行成功\n" );
-    }
-    else {
-        ret = 0;
-        if ( xmlrpc_p->verbose )
-            dputs( "deleteCocologFiles: 削除リクエスト発行失敗\n" );
+
+        setUpReceiveBuffer( response, sz );
+        ret = httpPostWithSession( xmlrpc_p->webServer, xmlrpc_p->webPage,
+                                   "application/x-www-form-urlencoded",
+                                   request, response, cookie,
+                                   NULL, NULL );
+        if ( response[0] ) {
+            ret = 1;
+            if ( xmlrpc_p->verbose )
+                dputs( "deleteCocologFiles: 削除リクエスト発行成功\n" );
+        }
+        else {
+            ret = 0;
+            if ( xmlrpc_p->verbose )
+                dputs( "deleteCocologFiles: 削除リクエスト発行失敗\n" );
+        }
     }
     encodeURL( NULL );
 
