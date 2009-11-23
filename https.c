@@ -5,6 +5,13 @@
  * History:
  * $Log: /comm/xmlRPC/https.c $
  * 
+ * 5     09/11/23 22:36 tsupo
+ * 1.277版
+ * 
+ * 26    09/10/30 20:50 Tsujimura543
+ * text_len が 1024 より大きいとき、hmac_sha256() 内でメモリ破壊が
+ * 起きる不具合に対処 (hmac_sha1() と同様の対処で解決)
+ * 
  * 4     09/11/23 13:27 tsupo
  * 1.273版
  * 
@@ -102,7 +109,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/https.c 4     09/11/23 13:27 tsupo $";
+"$Header: /comm/xmlRPC/https.c 5     09/11/23 22:36 tsupo $";
 #endif
 
 #include <stdio.h>
@@ -504,6 +511,7 @@ hmac_sha256(
     int                 key_len,    /* length of authentication key  */
     void                *digest)    /* caller digest to be filled in */
 {
+#if 0
     unsigned char k_ipad[65];   /* inner padding -
                                  * key XORd with ipad
                                  */
@@ -563,4 +571,15 @@ hmac_sha256(
     memcpy( bufferOut + 64, tk2, SHA256_DIGEST_LENGTH );
 
     SHA256( bufferOut, 64 + SHA256_DIGEST_LENGTH, digest );
+#else
+    unsigned int    result_len;
+    unsigned char   result[EVP_MAX_MD_SIZE];
+
+    HMAC( EVP_sha256(),
+          key,    key_len,
+          text,   text_len,
+          result, &result_len);
+
+    memcpy( digest, (const void *)result, result_len );
+#endif
 }

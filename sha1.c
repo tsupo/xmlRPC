@@ -30,6 +30,16 @@
  * History:
  * $Log: /comm/xmlRPC/sha1.c $
  * 
+ * 2     09/11/23 22:36 tsupo
+ * 1.277版
+ * 
+ * 7     09/10/30 20:28 Tsujimura543
+ * ソースコード整理
+ * 
+ * 6     09/10/30 20:25 Tsujimura543
+ * text_len が 1024 より大きいとき、hmac_sha1() 内でメモリ破壊が
+ * 起きる不具合に対処 (OpenSSL を利用することで解決)
+ * 
  * 1     09/05/14 3:46 tsupo
  * (1) ビルド環境のディレクトリ構造を整理
  * (2) VSSサーバ拠点を変更
@@ -50,9 +60,11 @@
 #include <string.h>
 #include "sha1.h"
 
+#include <openssl/hmac.h>
+
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/sha1.c 1     09/05/14 3:46 tsupo $";
+"$Header: /comm/xmlRPC/sha1.c 2     09/11/23 22:36 tsupo $";
 #endif
 
 #ifdef  _MSC_VER
@@ -471,65 +483,13 @@ hmac_sha1(
     int                 key_len,    /* length of authentication key  */
     void                *digest)    /* caller digest to be filled in */
 {
-    unsigned char k_ipad[65];   /* inner padding -
-                                 * key XORd with ipad
-                                 */
-    unsigned char k_opad[65];   /* outer padding -
-                                 * key XORd with opad
-                                 */
-    unsigned char tk[SHA1HashSize];
-    unsigned char tk2[SHA1HashSize];
-    unsigned char bufferIn[1024];
-    unsigned char bufferOut[1024];
-    int           i;
+    unsigned int    result_len;
+    unsigned char   result[EVP_MAX_MD_SIZE];
 
-    /* if key is longer than 64 bytes reset it to key=sha1(key) */
-    if ( key_len > 64 ) {
-        memcpy( (void *)tk, (const void *)_sha1(key, key_len), SHA1HashSize );
-        key     = tk;
-        key_len = SHA1HashSize;
-    }
+    HMAC( EVP_sha1(),
+          key,    key_len,
+          text,   text_len,
+          result, &result_len );
 
-    /*
-     * the HMAC_SHA1 transform looks like:
-     *
-     * SHA1(K XOR opad, SHA1(K XOR ipad, text))
-     *
-     * where K is an n byte key
-     * ipad is the byte 0x36 repeated 64 times
-     * opad is the byte 0x5c repeated 64 times
-     * and text is the data being protected
-     */
-
-    /* start out by storing key in pads */
-    memset( k_ipad, 0, sizeof k_ipad );
-    memset( k_opad, 0, sizeof k_opad );
-    memcpy( k_ipad, key, key_len );
-    memcpy( k_opad, key, key_len );
-
-    /* XOR key with ipad and opad values */
-    for ( i = 0; i < 64; i++ ) {
-        k_ipad[i] ^= 0x36;
-        k_opad[i] ^= 0x5c;
-    }
-
-    /*
-     * perform inner SHA1
-     */
-    memset( bufferIn, 0x00, 1024 );
-    memcpy( bufferIn, k_ipad, 64 );
-    memcpy( bufferIn + 64, text, text_len );
-
-    memcpy( (void *)tk2, (const void *)_sha1(bufferIn, 64 + text_len),
-            SHA1HashSize );
-
-    /*
-     * perform outer SHA1
-     */
-    memset( bufferOut, 0x00, 1024 );
-    memcpy( bufferOut, k_opad, 64 );
-    memcpy( bufferOut + 64, tk2, SHA1HashSize );
-
-    memcpy( digest, (const void *)_sha1(bufferOut, 64 + SHA1HashSize),
-            SHA1HashSize );
+    memcpy( digest, (const void *)result, result_len );
 }
