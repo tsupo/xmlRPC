@@ -1,6 +1,6 @@
 
 xmlRPC is a library for Windows. This library is supported for http/https communication, XML-RPC API, Atom Publishing Protocol, and APIs on some web services.
-libiconv and OpenSSL libraries are necessary for building this library. Current revison is built with iconv 1.9 and OpenSSL 0.9.8k.
+libiconv and OpenSSL libraries are necessary for building this library. Current revison is built with iconv 1.13 and OpenSSL 0.9.8l.
 
   libiconv: 
     http://www.gnu.org/software/libiconv/
