@@ -5,8 +5,16 @@
  * History:
  * $Log: /comm/xmlRPC/cocolog.c $
  * 
- * 3     09/07/07 1:28 tsupo
- * 1.271版
+ * 4     09/11/23 13:26 tsupo
+ * 1.273版
+ * 
+ * 22    09/09/02 20:13 Tsujimura543
+ * ソースコードを整理
+ * 
+ * 21    09/09/02 20:10 Tsujimura543
+ * (1) シングルサインオン(SSO)対応、完了
+ * (2) ログインはできるようになったが、その後の処理がまだうまくいってい
+ *     ない (magic_token の取得ができていない、等)
  * 
  * 20    09/07/03 16:21 Tsujimura543
  * ログイン失敗時に表示するダイアログの文言を修正
@@ -93,7 +101,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/cocolog.c 3     09/07/07 1:28 tsupo $";
+"$Header: /comm/xmlRPC/cocolog.c 4     09/11/23 13:26 tsupo $";
 #endif
 
 #define COCOLOGFREE_FILEMANAGER \
@@ -112,10 +120,6 @@ getMagicToken(
 {
     char    targetURL[MAX_URLLENGTH];
 
-    // ココログフリーの場合のみ magic_token を入手必要あり
-    //   (おそらく 従来のココログも TypePad 1.6 ベースに移行したら、
-    //    magic_token を使うようになるものと思われるので、将来に備え
-    //    ておく)
     *magic_token = NUL;
     if ( *path )
         sprintf( targetURL,
@@ -128,8 +132,12 @@ getMagicToken(
                 xmlrpc_p->blogKind == BLOGKIND_COCOLOGFREE
                     ? COCOLOGFREE_FILEMANAGER
                     : COCOLOG_FILEMANAGER );
+    setUserAgent("Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; alpha revision)");
     setUpReceiveBuffer( *response, *sz );
     http_getEx( targetURL, *response, cookie );
+        // ↑ @nifty SSO 移行後、この関数の奥深くで呼び出している
+        //    recvHTTP() が無限待ちになる(今のところ原因不明)
+        //      ↑ 最終的にタイムアウト発生で強制終了する
     if ( **response ) {
         char    *p, *q;
 
@@ -176,12 +184,9 @@ getRealm( char   *request,
           char   *cookie,
           char   *realm )
 {
-    char    cookie2[MAX_COOKIE_LEN + 2];
-    strcpy( cookie2, cookie );
-
     strcpy( request, "https://login.nifty.com/service/realm" );
     setUpReceiveBuffer( response, response_size );
-    http_getEx( request, response, cookie2 );
+    http_getEx( request, response, cookie );
     if ( *response ) {
         char    *p = strstr( response, "realm=" );
         if ( p ) {
@@ -258,23 +263,13 @@ loginCocologFiles( const char *username,    // (I) ユーザ名
              digest,
              encodeURL(sjis2utf("ログイン")) );
     setUpReceiveBuffer( response, sz );
-#if 0
-    ret = httpPostWithSession( xmlrpc_p->webServer, xmlrpc_p->webPage,
-                               "application/x-www-form-urlencoded",
-                               request, response, cookie,
-                               NULL, NULL );
-#else
     http_postEx( url,
                  "application/x-www-form-urlencoded",
                  request, response, cookie );
-#endif
-
- // if ( ret == -1 ) {
- //     ret = 0;        /* サーバとの通信失敗 */
- //     if ( xmlrpc_p->verbose )
- //         dputs( "loginCocologFiles: login失敗 (サーバとの通信失敗)\n" );
- // }
- /* else */ if ( *response ) {
+    if ( *cookie && strstr( cookie, "SSOID=" ) )
+        ret = 1;    /* ログイン成功 */
+#if 0
+    else if ( *response ) {
         char    targetString[BUFSIZ];
         sprintf( targetString, "| %sさん", username );
         if ( (strstr( response, sjis2utf(targetString) ) ||
@@ -308,6 +303,7 @@ loginCocologFiles( const char *username,    // (I) ユーザ名
             }
         }
     }
+#endif
     else {
         ret = 0;        /* サーバとの通信失敗 */
         if ( xmlrpc_p->verbose )
