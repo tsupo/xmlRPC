@@ -1,11 +1,18 @@
 /*
  *  はてなキーワードリンク関連API
  *
- *      Copyright (c) 2004, 2005, 2006, 2007, 2008, 2009 by H.Tsujimura
+ *      Copyright (c) 2004, 2005, 2006, 2007, 2008 by H.Tsujimura
  *      written by H.Tsujimura
  *
  * History:
  * $Log: /comm/xmlRPC/hatenaApi.c $
+ * 
+ * 4     09/11/23 14:04 tsupo
+ * 1.275版
+ * 
+ * 75    09/10/06 18:17 Tsujimura543
+ * postBookmarkWithCollectionOnHatena() を修正。コレクションへの追加が
+ * できなくなってしまっていたのを、追加できるようにした
  * 
  * 3     09/07/07 1:35 tsupo
  * 1.272版
@@ -290,7 +297,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/hatenaApi.c 3     09/07/07 1:35 tsupo $";
+"$Header: /comm/xmlRPC/hatenaApi.c 4     09/11/23 14:04 tsupo $";
 #endif
 
 
@@ -3082,6 +3089,15 @@ postBookmarkWithCollectionOnHatena(
                  "url=%s",
                  usrname,
                  encodeURL(href) );
+
+        // いつの間にか、(ブクマには追加できるのに)なぜか
+        // コレクションに追加できなくなってしまったための
+        // 対策 (URL末尾に / (%2F) が付いていると、コレク
+        // ションに追加できなくなくなってしまったことが判
+        // 明した)
+        p = &(url[strlen(url) - 3]);
+        if ( !strcmp( p, "%2F" ) )
+            *p = NUL;
 #endif
         setUpReceiveBuffer( response, sz );
         httpGetBufferWithSession( url, response, TRUE, NULL, NULL, cookie,
@@ -3155,14 +3171,19 @@ postBookmarkWithCollectionOnHatena(
                 sprintf( request + strlen(request),
                          "comment=&" );
             sprintf( request + strlen(request),
+                     "add_asin=1&"
+                     "asin=%s&", 
+                     asin );
+            sprintf( request + strlen(request),
                      "with_status_op=1&" );
             if ( isPrivate )
                 sprintf( request + strlen(request),
                          "private=1&" );
+            else
+                sprintf( request + strlen(request),
+                         "private=0&" );
             sprintf( request + strlen(request),
-                     "add_asin=1&"
-                     "asin=%s&", 
-                     asin );
+                     "send_mail=0" );
 #endif
             setUpReceiveBuffer( response, sz );
             httpPostWithSession( xmlrpc_p->webServer, xmlrpc_p->webPage,

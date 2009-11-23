@@ -8,6 +8,12 @@
  * History:
  * $Log: /comm/xmlRPC/xmlRPCutil.c $
  * 
+ * 3     09/11/23 14:04 tsupo
+ * 1.275版
+ * 
+ * 40    09/10/06 15:09 Tsujimura543
+ * decodeNumericReference() を16進表現にも対応させた
+ * 
  * 2     09/05/29 7:09 tsupo
  * 1.267版
  * 
@@ -140,7 +146,7 @@
 
 #ifndef	lint
 static char	*rcs_id =
-"$Header: /comm/xmlRPC/xmlRPCutil.c 2     09/05/29 7:09 tsupo $";
+"$Header: /comm/xmlRPC/xmlRPCutil.c 3     09/11/23 14:04 tsupo $";
 #endif
 
 #ifdef  _MSC_VER
@@ -204,8 +210,17 @@ decodeNumericReference( char *src )
         temp[0] = NUL;
         while ( *p ) {
             if ( (*p == '&') && (*(p + 1) == '#') ) {
-                l = atol( p + 2 );
-                strcat( temp, convUnicode( l ) );
+                if ( *(p + 2) == 'x' ) {
+                    // 16進
+                    char    *term;
+                    l = strtoul( p + 3, &term, 16 );
+                    strcat( temp, convUnicode( l ) );
+                }
+                else {
+                    // 10進
+                    l = atol( p + 2 );
+                    strcat( temp, convUnicode( l ) );
+                }
                 p = strchr( p + 2, ';' ) + 1;
             }
             else {

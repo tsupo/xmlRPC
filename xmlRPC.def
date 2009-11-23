@@ -296,6 +296,8 @@ EXPORTS
     getStatusCode           @148
     setSigInfo              @89
     setSigInfo3             @91
+    decodeNumericReference  @92
+    convUnicode             @93
 
 ;   for ココログのファイルマネージャ
     deleteFile          @227

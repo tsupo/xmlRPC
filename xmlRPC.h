@@ -50,6 +50,12 @@
  * History:
  * $Log: /comm/xmlRPC/xmlRPC.h $
  * 
+ * 6     09/11/23 14:04 tsupo
+ * 1.275版
+ * 
+ * 248   09/10/06 15:08 Tsujimura543
+ * decodeNumericReference() を DLL 外に公開
+ * 
  * 5     09/06/02 2:49 tsupo
  * 1.268版
  * 
@@ -1343,7 +1349,8 @@ char	*encodeURLex4(
             );
 char    *decodeURL( const char *p );
 char    *translateURL( const char *p );
-char    *convUnicode( unsigned long code ); /* 数値参照のデコード */
+char    *convUnicode( unsigned long code );   /* 数値参照のデコード補助 */
+char    *decodeNumericReference( char *src ); /* 数値参照のデコード */
 int     strncmpi( const char *, const char *, size_t len );
 
 char    *getNonce( const char *preNonce );
